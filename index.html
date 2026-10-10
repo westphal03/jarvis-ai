@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="jarvis-version" content="1791667085">
+<meta name="jarvis-version" content="1791675734">
 <title>J.A.R.V.I.S.</title>
 <style>
   :root{
@@ -414,6 +414,22 @@
         <span style="font-size:12px;">🔊</span>
       </div>
       <div class="sync-note hint" style="margin-top:0; margin-bottom:12px;">Shortcut: press <b>M</b> to start / stop.</div>
+
+      <div id="workAlarm" style="border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:14px; background:var(--panel-2);">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <b style="flex:1; min-width:140px;">💼 Alarme travail</b>
+          <label style="display:flex; align-items:center; gap:6px; font-size:13px;"><input type="checkbox" id="waOn" onchange="setWorkOn(this.checked)"> Activée</label>
+        </div>
+        <div id="waTime" style="font-size:38px; font-weight:600; font-variant-numeric:tabular-nums; margin:6px 0 0;">--:--</div>
+        <div id="waSub" style="font-size:13px; color:var(--text-dim); margin-bottom:8px;"></div>
+        <div style="display:flex; align-items:center; gap:8px; font-size:13px; flex-wrap:wrap;">
+          <span style="flex:1; min-width:120px;">Avant le début du travail</span>
+          <button type="button" onclick="setWorkOffset(-15)" style="min-width:44px; min-height:40px;">−</button>
+          <b id="waOff" style="min-width:64px; text-align:center;">1 h 30</b>
+          <button type="button" onclick="setWorkOffset(15)" style="min-width:44px; min-height:40px;">+</button>
+        </div>
+        <div class="sync-note hint" style="margin-bottom:0;">Utilise les événements « Travail » avec une heure dans le calendrier ci-dessus.</div>
+      </div>
 
       <div class="row" style="flex-wrap:wrap;">
         <input type="time" id="alarmTime" value="07:00">
@@ -1201,10 +1217,61 @@ function renderAlarms(){
       <button class="ghost" onclick="delAlarm(${a.id})" title="Supprimer">✕</button></li>`;
   }).join('');
 }
+/* ---------------- Alarme travail: X min avant chaque quart « Travail » du calendrier ---------------- */
+let workAlarm = Object.assign({on:true, offset:90}, loadJSON('jarvis_workalarm',{}));
+const WORK_RE = /travail|boulot|shift|quart de|\bwork\b/i;
+function workFired(){ return loadJSON('jarvis_workfired',{}); }
+function nextShiftAlarm(){
+  const now=Date.now(), fired=workFired(); let best=null;
+  for(let d=0; d<15; d++){
+    const day=new Date(); day.setHours(0,0,0,0); day.setDate(day.getDate()+d);
+    const k=dateKey(day), list=(events&&events[k])||[];
+    for(let i=0;i<list.length;i++){
+      const it=list[i], m=String(it.time||'').match(/^(\d{1,2}):(\d{2})/);
+      if(!m || !WORK_RE.test(String(it.text||''))) continue;
+      const start=new Date(day.getFullYear(),day.getMonth(),day.getDate(),+m[1],+m[2],0);
+      const at=new Date(start.getTime()-workAlarm.offset*60000);
+      const key=k+'|'+it.time+'|'+workAlarm.offset;
+      if(fired[key] || at.getTime()+20*60000<now) continue;
+      if(!best || at<best.at) best={at:at,start:start,key:key,timeStr:pad(start.getHours())+':'+pad(start.getMinutes())};
+    }
+  }
+  return best;
+}
+function saveWork(){ saveJSON('jarvis_workalarm',workAlarm); renderWorkAlarm(); }
+function setWorkOn(v){ workAlarm.on=!!v; saveWork(); ensureAudio(); }
+function setWorkOffset(dm){ workAlarm.offset=Math.max(0,Math.min(360,workAlarm.offset+dm)); saveWork(); }
+function renderWorkAlarm(){
+  const tEl=document.getElementById('waTime'); if(!tEl) return;
+  const on=document.getElementById('waOn'); if(on) on.checked=!!workAlarm.on;
+  const h=Math.floor(workAlarm.offset/60), m=workAlarm.offset%60;
+  document.getElementById('waOff').textContent = (h?h+' h':'')+(h&&m?' '+pad(m):(m?m+' min':'')) || '0 min';
+  const n=nextShiftAlarm();
+  tEl.style.opacity = workAlarm.on ? '1' : '.45';
+  if(n){
+    tEl.textContent=pad(n.at.getHours())+':'+pad(n.at.getMinutes());
+    document.getElementById('waSub').textContent=(workAlarm.on?'':'Désactivée · ')+'Travail '+n.start.toLocaleDateString('fr-CA',{weekday:'short',day:'numeric',month:'short'})+' à '+n.timeStr;
+  }else{
+    tEl.textContent='--:--';
+    document.getElementById('waSub').textContent='Aucun quart de travail prévu dans les 14 prochains jours.';
+  }
+}
+function checkWorkAlarm(){
+  if(!workAlarm.on) return false;
+  const n=nextShiftAlarm(); if(!n) return false;
+  const now=Date.now();
+  if(now<n.at.getTime() || now>=n.at.getTime()+20*60000) return false;
+  const f=workFired(); f[n.key]=1;
+  const ks=Object.keys(f); if(ks.length>40) ks.slice(0,ks.length-40).forEach(function(x){ delete f[x]; });
+  try{ localStorage.setItem('jarvis_workfired',JSON.stringify(f)); }catch(e){}
+  ringAlarm({label:'Travail à '+n.timeStr,time:pad(new Date().getHours())+':'+pad(new Date().getMinutes())});
+  return true;
+}
 function checkAlarms(){
   const now=new Date(), hm=pad(now.getHours())+':'+pad(now.getMinutes()), stamp=dateKey(now)+' '+hm;
   if(ringing){ return; }
   if(snoozeUntil && Date.now()>=snoozeUntil){ snoozeUntil=0; ringAlarm({label:'Rappel (snooze)',time:hm}); return; }
+  if(checkWorkAlarm()) return;
   for(const a of alarms){
     if(!a.on || a.time!==hm || a.lastFired===stamp) continue;
     if(a.days.length && !a.days.includes(now.getDay())) continue;
@@ -1259,6 +1326,7 @@ function nextAlarmInfo(){
       break;
     }
   });
+  if(workAlarm.on){ var wn=nextShiftAlarm(); if(wn && wn.at>now && (!best||wn.at<best.t)) best={t:wn.at,a:{label:'Travail '+wn.timeStr}}; }
   return best;
 }
 function fmtIn(ms){
@@ -1270,6 +1338,7 @@ function tickExtras(){
   var night = (hr>=20 || hr<7);
   var want = night ? 'dark' : 'light';
   if(document.documentElement.getAttribute('data-theme')!==want) document.documentElement.setAttribute('data-theme',want);
+  renderWorkAlarm();
   var info=nextAlarmInfo();
   var txt = info ? ('⏰ <b>'+pad(info.t.getHours())+':'+pad(info.t.getMinutes())+'</b> · dans '+fmtIn(info.t-now)+(info.a.label?' · '+escapeHtml(info.a.label):'')) : 'Aucune alarme';
   var el=document.getElementById('nextAlarm'); if(el) el.innerHTML=txt;
@@ -1285,7 +1354,7 @@ tickExtras();
 
 
 /* ---------------- Cross-device sync (shared JSON document) ---------------- */
-var SYNC_KEYS=['jarvis_events','jarvis_birthdays','jarvis_recurring','jarvis_notes','jarvis_today_tasks','jarvis_goals','jarvis_schedule_done','jarvis_today_date'];
+var SYNC_KEYS=['jarvis_workalarm','jarvis_events','jarvis_birthdays','jarvis_recurring','jarvis_notes','jarvis_today_tasks','jarvis_goals','jarvis_schedule_done','jarvis_today_date'];
 var SYNC_API='https://jsonblob.com/api/jsonBlob/';
 var syncBusy=false, syncTimer=null, syncLoop=null, lastSyncOk='';
 function syncId(){ try{ return localStorage.getItem('jarvis_sync_id')||''; }catch(e){ return ''; } }
