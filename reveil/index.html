@@ -1409,6 +1409,23 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   initMcp();
   $('todo-meta').textContent = syncId() ? 'synchronisation…' : 'enregistré sur cet appareil';
   syncNow();
+  /* Import unique depuis un petit fichier de données (lien #k=...) */
+  (function () {
+    var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/); if (!m) return;
+    fetch('d-' + m[1] + '.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); }).then(function (p) {
+      Object.keys(p).forEach(function (k) {
+        var cur = null; try { cur = JSON.parse(lsGet(k)); } catch (e) {}
+        var v = p[k];
+        if (cur == null || (typeof cur === 'object' && !Array.isArray(cur) && !Object.keys(cur).length)) { /* absent: on prend tout */ }
+        else if (Array.isArray(v) && Array.isArray(cur)) { var seen = {}; cur.forEach(function (x) { seen[JSON.stringify(x)] = 1; }); v.forEach(function (x) { if (!seen[JSON.stringify(x)]) cur.push(x); }); v = cur; }
+        else if (k === 'jarvis_events' && cur && typeof cur === 'object') { Object.keys(v).forEach(function (d) { var a = Array.isArray(cur[d]) ? cur[d] : [], seen = {}; a.forEach(function (x) { seen[JSON.stringify(x)] = 1; }); v[d].forEach(function (x) { if (!seen[JSON.stringify(x)]) a.push(x); }); cur[d] = a; }); v = cur; }
+        else return;
+        lsSet(k, JSON.stringify(v)); lsSet('jarvis_ts_' + k, String(Date.now()));
+      });
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      location.reload();
+    }).catch(function () { document.getElementById('todo-meta').textContent = 'Import impossible (lien expiré ?)'; });
+  })();
   tick();
   setInterval(tick, 1000);
 })();
