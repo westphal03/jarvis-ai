@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="jarvis-version" content="1791665305">
+<meta name="jarvis-version" content="1791665702">
 <title>J.A.R.V.I.S.</title>
 <style>
   :root{
@@ -429,7 +429,24 @@
     var b=h.slice(8).replace(/-/g,'+').replace(/_/g,'/');
     while(b.length%4) b+='=';
     var data=JSON.parse(decodeURIComponent(escape(atob(b))));
-    Object.keys(data).forEach(function(k){ localStorage.setItem(k, JSON.stringify(data[k])); });
+    Object.keys(data).forEach(function(k){
+      var v=data[k], cur=null;
+      try{ cur=JSON.parse(localStorage.getItem(k)); }catch(e){}
+      if(Array.isArray(v) && Array.isArray(cur)){
+        var seen={}; cur.forEach(function(x){ seen[JSON.stringify(x)]=1; });
+        v.forEach(function(x){ if(!seen[JSON.stringify(x)]) cur.push(x); });
+        v=cur;
+      }else if(v && typeof v==='object' && !Array.isArray(v) && cur && typeof cur==='object' && !Array.isArray(cur)){
+        Object.keys(v).forEach(function(d){
+          var a=Array.isArray(cur[d])?cur[d]:[], seen={};
+          a.forEach(function(x){ seen[JSON.stringify(x)]=1; });
+          (Array.isArray(v[d])?v[d]:[]).forEach(function(x){ if(!seen[JSON.stringify(x)]) a.push(x); });
+          cur[d]=a;
+        });
+        v=cur;
+      }
+      localStorage.setItem(k, JSON.stringify(v));
+    });
     history.replaceState(null,'',location.pathname+location.search);
   }catch(e){}
 })();
@@ -502,6 +519,7 @@ const TYPE_ICON = {birthday:'🎂', task:'✅', reminder:'⏰', event:'📌'};
 const MS_DAY = 86400000;
 function iconFor(item){
   const t = (item.text||'').toLowerCase();
+  if(t.includes('travail') || t.includes('quart')) return '💼';
   if(t.includes('recycl')) return '♻️';
   if(t.includes('déchet') || t.includes('dechet') || t.includes('poubelle') || t.includes('garbage') || t.includes('trash')) return '🗑️';
   return TYPE_ICON[item.type||'event'];
@@ -579,8 +597,10 @@ function renderCalendar(){
     const hasTrash = allDay.some(e=>{ const t=(e.text||'').toLowerCase(); return t.includes('déchet')||t.includes('dechet')||t.includes('poubelle'); });
     if(hasRecycl) badges += '<span class="icon">♻️</span>';
     if(hasTrash) badges += '<span class="icon">🗑️</span>';
+    const hasWork = allDay.some(e=>{ const t=(e.text||'').toLowerCase(); return t.includes('travail')||t.includes('quart'); });
+    if(hasWork) badges += '<span class="icon">💼</span>';
     ['task','reminder','event'].forEach(t=>{
-      if(!hasRecycl && !hasTrash && allDay.some(e=>(e.type||'event')===t)) badges += '<span class="icon">'+TYPE_ICON[t]+'</span>';
+      if(!hasRecycl && !hasTrash && !hasWork && allDay.some(e=>(e.type||'event')===t)) badges += '<span class="icon">'+TYPE_ICON[t]+'</span>';
     });
     if(googleEventsCache[key] && googleEventsCache[key].length) badges += '<span class="icon">🟢</span>';
 
