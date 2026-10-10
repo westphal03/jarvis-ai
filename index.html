@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="jarvis-version" content="1791664685">
+<meta name="jarvis-version" content="1791665305">
 <title>J.A.R.V.I.S.</title>
 <style>
   :root{
@@ -41,7 +41,7 @@
   .panel.wide{grid-column: 1 / -1;}
 
   /* Panoramic / TV mode: everything visible on one screen, no page scroll */
-  @media (min-width:1000px) and (min-aspect-ratio: 4/3){
+  @media (min-width:900px) and (orientation:landscape){
     html, body{height:100%;}
     .wrap{height:100vh; padding:18px 22px; display:flex; flex-direction:column; box-sizing:border-box;}
     header{flex-shrink:0; margin-bottom:12px;}
@@ -63,6 +63,86 @@
     #alarmPanel{grid-area:alarm;}
     .panel h2{margin-bottom:8px;}
     #calendarPanel textarea{min-height:60px;}
+  }
+
+  .nextalarm{font-size:13px; color:var(--text-dim); text-align:center; flex:1;}
+  .nextalarm b{color:var(--accent-2); font-weight:600;}
+  .clock{cursor:pointer;}
+  #clockMode{display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:60; background:#000; color:#c98a5c; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  body.clockmode #clockMode{display:flex;}
+  #cmTime{font-size:min(28vw,42vh); font-weight:200; letter-spacing:-0.02em; line-height:1; font-variant-numeric:tabular-nums;}
+  #cmDate{font-size:min(4vw,6vh); opacity:.7; margin-top:2vh; text-transform:capitalize;}
+  #cmAlarm{font-size:min(3.2vw,5vh); opacity:.55; margin-top:2vh;}
+
+  /* iPad / small landscape tablets: everything on one screen, no visible scrollbars */
+  @media (max-width:1180px) and (orientation:landscape){
+    .wrap{padding:8px 10px;}
+    header{margin-bottom:6px; flex-wrap:nowrap;}
+    h1{font-size:18px; letter-spacing:1.5px;}
+    .core{width:30px; height:30px; border-width:2px;}
+    .core::after{inset:5px;}
+    .sub{display:none;}
+    .clock .time{font-size:36px; line-height:1;}
+    .clock .date{font-size:12px;}
+    .grid{gap:8px; grid-template-columns:1.1fr 1fr 1fr 1.05fr; grid-template-rows:1fr 1fr auto;}
+    .panel{padding:10px 12px; border-radius:12px;}
+    .grid > .panel{overflow-y:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+    .grid > .panel::-webkit-scrollbar{display:none;}
+    #dailyPanel,#statsPanel{max-height:none;}
+    .panel h2{font-size:11px; margin-bottom:6px; letter-spacing:.6px;}
+    .hint{display:none;}
+    #progressRing{width:46px; height:46px;}
+    #dailyQuote{font-size:13px !important;}
+    #dailyPanel > div:nth-of-type(1){margin-bottom:6px !important; gap:10px !important;}
+    li.todo{padding:4px 0; font-size:12px;}
+    li.progress-goal{padding:5px 0;}
+    .g-controls{display:none;}
+    input[type=text], textarea, select, input[type=time]{padding:6px 8px; font-size:12px;}
+    button{padding:6px 10px; font-size:12px;}
+    .row{margin-bottom:6px;}
+    .cal-head{margin-bottom:6px;}
+    .cal-grid{gap:3px;}
+    .cal-day{aspect-ratio:auto; height:34px; padding:3px 4px; border-radius:9px;}
+    .cal-dow{padding:2px 0 3px;}
+    .day-detail{margin-top:8px; padding-top:8px;}
+    #notesPanel textarea{min-height:0; height:calc(100% - 52px);}
+    .social-groups{grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;}
+    .stat-row{padding:3px 0;}
+    .stat-name{font-size:11px;}
+    .stat-handle{display:none;}
+    .stat-num{font-size:12px;}
+    #pipelineList > div{padding:5px 0 !important;}
+    .sound-row{margin-bottom:6px; gap:6px;}
+    .day-chips{margin-bottom:4px;}
+    .lbl{display:none;}
+    .stat-label{display:none;}
+    .stat-row{padding:2px 0 !important;}
+    .social-group .sg-title{font-size:11px; margin-bottom:2px;}
+    #statsPanel h2{margin-bottom:3px;}
+    .sound-row select{flex:1; min-width:0;}
+    .sound-row button{flex:0 0 auto;}
+    .cal-head .month{font-size:13px; white-space:nowrap;}
+    .cal-head button{padding:5px 8px;}
+    .grid{grid-template-rows:1.1fr 0.9fr auto;}
+    #dailyPanel > div:nth-of-type(2){gap:10px !important;}
+    .stat-num{font-size:12px !important;}
+    .sound-row{flex-wrap:wrap;}
+    .sound-row select{flex:1 1 90px !important;}
+    #dayDetail .row, #alarmPanel .row{flex-wrap:nowrap;}
+    #dayDetail .row select, #dayDetail .row input{min-width:0; flex:1 1 0;}
+    #alarmPanel input[type=time]{flex:0 0 108px; min-width:0;}
+    #alarmPanel #alarmLabel{min-width:0 !important;}
+    .day-chips{flex-wrap:nowrap; gap:3px;}
+    .day-chips button{padding:4px 5px; font-size:10px; flex:1;}
+    #dailyPanel > div:nth-of-type(2){grid-template-columns:2.2fr 1fr !important;}
+    #todayScheduleList{columns:2; column-gap:14px;}
+    #todayScheduleList li{break-inside:avoid;}
+    .volrow{display:none !important;}
+    .day-chips{flex-wrap:nowrap !important;}
+    #alarmPanel input[type=time]{flex:0 0 112px !important;}
+    #alarmPanel .row button{padding:6px 9px;}
+    #evType{flex:0 0 80px !important;}
+    #evTime{flex:0 0 54px !important;}
   }
   .panel h2{font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin:0 0 14px; display:flex; align-items:center; gap:8px;}
   .stat-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);}
@@ -172,12 +252,20 @@
         <div class="sub">Kevin's command center</div>
       </div>
     </div>
+    <div class="nextalarm" id="nextAlarm"></div>
     <button class="ghost" id="soundQuickBtn" onclick="toggleSound()" title="Start/stop background sound (M)">🌫️ Grey noise</button>
-    <div class="clock">
+    <div class="clock" onclick="toggleClockMode()" title="Touche pour le mode nuit">
       <div class="time" id="clockTime">--:--</div>
       <div class="date" id="clockDate">-</div>
     </div>
   </header>
+
+  <div id="clockMode" onclick="toggleClockMode()">
+    <div id="cmTime">--:--</div>
+    <div id="cmDate"></div>
+    <div id="cmAlarm"></div>
+    <div style="margin-top:4vh; font-size:13px; opacity:.5;">Touche pour revenir</div>
+  </div>
 
   <div class="ring-overlay" id="ringOverlay">
     <div class="ring-card">
@@ -210,7 +298,7 @@
       </div>
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px;">
         <div>
-          <div style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Today's schedule</div>
+          <div class="lbl" style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Today's schedule</div>
           <div class="row">
             <input type="text" id="todayTaskInput" placeholder="Add a task for today...">
             <button onclick="addTodayTask()">Add</button>
@@ -218,7 +306,7 @@
           <ul id="todayScheduleList"></ul>
         </div>
         <div>
-          <div style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Goals</div>
+          <div class="lbl" style="font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;">Goals</div>
           <div class="row">
             <input type="text" id="goalInput" placeholder="Add a goal...">
             <button onclick="addGoal()">Add</button>
@@ -273,7 +361,7 @@
         </div>
 
       </div>
-      <div class="sync-note">Auto-synced via vidIQ where possible. TikTok/X have no connected data source yet — connect Metricool for those.</div>
+      <div class="sync-note hint">Auto-synced via vidIQ where possible. TikTok/X have no connected data source yet — connect Metricool for those.</div>
     </div>
 
     <div class="panel" id="alarmPanel">
@@ -306,12 +394,12 @@
           <option value="480">8 h</option>
         </select>
       </div>
-      <div class="row" style="align-items:center; margin-bottom:4px;">
+      <div class="row volrow" style="align-items:center; margin-bottom:4px;">
         <span style="font-size:12px;">🔈</span>
         <input type="range" id="soundVol" min="0" max="100" style="flex:1; accent-color:var(--accent);" oninput="setVolume(this.value)">
         <span style="font-size:12px;">🔊</span>
       </div>
-      <div class="sync-note" style="margin-top:0; margin-bottom:12px;">Shortcut: press <b>M</b> to start / stop.</div>
+      <div class="sync-note hint" style="margin-top:0; margin-bottom:12px;">Shortcut: press <b>M</b> to start / stop.</div>
 
       <div class="row" style="flex-wrap:wrap;">
         <input type="time" id="alarmTime" value="07:00">
@@ -320,7 +408,7 @@
       </div>
       <div class="day-chips" id="alarmDays"></div>
       <ul id="alarmList"></ul>
-      <div class="sync-note">Alarms ring only while this page is open. Tap anywhere once after opening so the browser allows sound.</div>
+      <div class="sync-note hint">Alarms ring only while this page is open. Tap anywhere once after opening so the browser allows sound.</div>
     </div>
 
     <div class="panel" id="notesPanel">
@@ -333,6 +421,18 @@
 </div>
 
 <script>
+/* One-time data import via URL fragment (#import=...) — the fragment never leaves the browser */
+(function(){
+  try{
+    var h=location.hash||'';
+    if(h.indexOf('#import=')!==0) return;
+    var b=h.slice(8).replace(/-/g,'+').replace(/_/g,'/');
+    while(b.length%4) b+='=';
+    var data=JSON.parse(decodeURIComponent(escape(atob(b))));
+    Object.keys(data).forEach(function(k){ localStorage.setItem(k, JSON.stringify(data[k])); });
+    history.replaceState(null,'',location.pathname+location.search);
+  }catch(e){}
+})();
 function loadJSON(key, fallback){
   try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e){ return fallback; }
@@ -1105,6 +1205,45 @@ document.addEventListener('keydown',e=>{
   }
 });
 ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,function once(){ ensureAudio(); document.removeEventListener(ev,once); }));
+
+
+/* ---------------- Bedside extras: auto night theme, next alarm, clock mode ---------------- */
+function nextAlarmInfo(){
+  var now=new Date(), best=null;
+  alarms.forEach(function(a){
+    if(!a.on) return;
+    var hm=a.time.split(':'), h=+hm[0], m=+hm[1];
+    for(var d=0; d<8; d++){
+      var t=new Date(now.getFullYear(),now.getMonth(),now.getDate()+d,h,m,0);
+      if(t<=now) continue;
+      if(a.days.length && a.days.indexOf(t.getDay())===-1) continue;
+      if(!best||t<best.t) best={t:t,a:a};
+      break;
+    }
+  });
+  return best;
+}
+function fmtIn(ms){
+  var mins=Math.round(ms/60000), h=Math.floor(mins/60), m=mins%60;
+  return h>0 ? h+' h '+(m<10?'0':'')+m+' min' : m+' min';
+}
+function tickExtras(){
+  var now=new Date(), hr=now.getHours();
+  var night = (hr>=20 || hr<7);
+  var want = night ? 'dark' : 'light';
+  if(document.documentElement.getAttribute('data-theme')!==want) document.documentElement.setAttribute('data-theme',want);
+  var info=nextAlarmInfo();
+  var txt = info ? ('⏰ <b>'+pad(info.t.getHours())+':'+pad(info.t.getMinutes())+'</b> · dans '+fmtIn(info.t-now)+(info.a.label?' · '+escapeHtml(info.a.label):'')) : 'Aucune alarme';
+  var el=document.getElementById('nextAlarm'); if(el) el.innerHTML=txt;
+  if(document.body.classList.contains('clockmode')){
+    document.getElementById('cmTime').textContent=pad(hr)+':'+pad(now.getMinutes());
+    document.getElementById('cmDate').textContent=now.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('cmAlarm').innerHTML=txt;
+  }
+}
+function toggleClockMode(){ document.body.classList.toggle('clockmode'); tickExtras(); ensureAudio(); }
+setInterval(tickExtras,1000);
+tickExtras();
 
 /* ---------------- Daily rollover ---------------- */
 function checkDailyRollover(){
