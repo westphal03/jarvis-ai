@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="jarvis-version" content="1791675734">
+<meta name="jarvis-version" content="1791675889">
 <title>J.A.R.V.I.S.</title>
 <style>
   :root{
@@ -1354,7 +1354,7 @@ tickExtras();
 
 
 /* ---------------- Cross-device sync (shared JSON document) ---------------- */
-var SYNC_KEYS=['jarvis_workalarm','jarvis_events','jarvis_birthdays','jarvis_recurring','jarvis_notes','jarvis_today_tasks','jarvis_goals','jarvis_schedule_done','jarvis_today_date'];
+var SYNC_KEYS=['reveil_db','jarvis_workalarm','jarvis_events','jarvis_birthdays','jarvis_recurring','jarvis_notes','jarvis_today_tasks','jarvis_goals','jarvis_schedule_done','jarvis_today_date'];
 var SYNC_API='https://jsonblob.com/api/jsonBlob/';
 var syncBusy=false, syncTimer=null, syncLoop=null, lastSyncOk='';
 function syncId(){ try{ return localStorage.getItem('jarvis_sync_id')||''; }catch(e){ return ''; } }
