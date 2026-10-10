@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="jarvis-version" content="1791665702">
+<meta name="jarvis-version" content="1791667085">
 <title>J.A.R.V.I.S.</title>
 <style>
   :root{
@@ -253,12 +253,26 @@
       </div>
     </div>
     <div class="nextalarm" id="nextAlarm"></div>
+    <button class="ghost" id="syncBtn" onclick="syncClick()">☁️ Activer la synchro</button>
     <button class="ghost" id="soundQuickBtn" onclick="toggleSound()" title="Start/stop background sound (M)">🌫️ Grey noise</button>
     <div class="clock" onclick="toggleClockMode()" title="Touche pour le mode nuit">
       <div class="time" id="clockTime">--:--</div>
       <div class="date" id="clockDate">-</div>
     </div>
   </header>
+
+  <div id="syncPanel" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:70; background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:460px; width:100%;">
+      <div style="font-size:16px; font-weight:600; margin-bottom:6px;">☁️ Synchronisation active</div>
+      <div style="font-size:13px; color:var(--text-dim); margin-bottom:10px;">Pour relier un autre appareil (iPad, téléphone…), ouvre ce lien dessus une seule fois :</div>
+      <input type="text" id="syncLink" readonly onclick="this.select()" style="margin-bottom:10px;">
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="ghost" onclick="disableSync()">Désactiver</button>
+        <button class="ghost" onclick="copySyncLink()">Copier</button>
+        <button onclick="closeSyncPanel()">Fermer</button>
+      </div>
+    </div>
+  </div>
 
   <div id="clockMode" onclick="toggleClockMode()">
     <div id="cmTime">--:--</div>
@@ -425,8 +439,10 @@
 (function(){
   try{
     var h=location.hash||'';
+    if(h.indexOf('#sync=')===0){ localStorage.setItem('jarvis_sync_id', h.slice(6).split('&')[0]); history.replaceState(null,'',location.pathname+location.search); return; }
     if(h.indexOf('#import=')!==0) return;
-    var b=h.slice(8).replace(/-/g,'+').replace(/_/g,'/');
+    window.__setupSync = h.indexOf('&setup=1')>-1;
+    var b=h.slice(8).split('&')[0].replace(/-/g,'+').replace(/_/g,'/');
     while(b.length%4) b+='=';
     var data=JSON.parse(decodeURIComponent(escape(atob(b))));
     Object.keys(data).forEach(function(k){
@@ -446,6 +462,7 @@
         v=cur;
       }
       localStorage.setItem(k, JSON.stringify(v));
+      localStorage.setItem('jarvis_ts_'+k, String(Date.now()));
     });
     history.replaceState(null,'',location.pathname+location.search);
   }catch(e){}
@@ -457,6 +474,7 @@ function loadJSON(key, fallback){
 function saveJSON(key, val){
   try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
   dbSave(key, val);
+  if(typeof markSync==='function') markSync(key);
 }
 
 /* ---------------- Durable storage (db capability) ---------------- */
@@ -1265,6 +1283,82 @@ function toggleClockMode(){ document.body.classList.toggle('clockmode'); tickExt
 setInterval(tickExtras,1000);
 tickExtras();
 
+
+/* ---------------- Cross-device sync (shared JSON document) ---------------- */
+var SYNC_KEYS=['jarvis_events','jarvis_birthdays','jarvis_recurring','jarvis_notes','jarvis_today_tasks','jarvis_goals','jarvis_schedule_done','jarvis_today_date'];
+var SYNC_API='https://jsonblob.com/api/jsonBlob/';
+var syncBusy=false, syncTimer=null, syncLoop=null, lastSyncOk='';
+function syncId(){ try{ return localStorage.getItem('jarvis_sync_id')||''; }catch(e){ return ''; } }
+function tsOf(k){ try{ return +localStorage.getItem('jarvis_ts_'+k)||0; }catch(e){ return 0; } }
+function markSync(key){
+  if(SYNC_KEYS.indexOf(key)===-1) return;
+  try{ localStorage.setItem('jarvis_ts_'+key, String(Date.now())); }catch(e){}
+  scheduleSync();
+}
+function scheduleSync(){ if(!syncId()) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncNow,2500); }
+function snapshot(){
+  var d={}, t={};
+  SYNC_KEYS.forEach(function(k){ var raw=localStorage.getItem(k); if(raw!==null){ try{ d[k]=JSON.parse(raw); t[k]=tsOf(k); }catch(e){} } });
+  return {data:d, ts:t};
+}
+function setSyncUI(st){
+  var b=document.getElementById('syncBtn'); if(!b) return;
+  if(!syncId()){ b.textContent='☁️ Activer la synchro'; return; }
+  if(st==='ok'){ var n=new Date(); lastSyncOk=pad(n.getHours())+':'+pad(n.getMinutes()); }
+  b.textContent = st==='err' ? '☁️ Synchro ⚠ hors ligne' : ('☁️ Synchro ✓ '+lastSyncOk);
+}
+function reloadStateFromStorage(){
+  events=loadJSON('jarvis_events',{}); birthdays=loadJSON('jarvis_birthdays',[]); recurring=loadJSON('jarvis_recurring',[]);
+  notesEl.value=loadJSON('jarvis_notes',''); todayTasks=loadJSON('jarvis_today_tasks',[]); goals=loadJSON('jarvis_goals',[]); migrateGoals();
+  scheduleDone=loadJSON('jarvis_schedule_done',[]);
+  renderCalendar(); renderDayDetail(); renderDaily();
+}
+function syncNow(){
+  var id=syncId(); if(!id||syncBusy) return; syncBusy=true;
+  fetch(SYNC_API+id,{headers:{'Accept':'application/json'},cache:'no-store'})
+  .then(function(r){ if(!r.ok) throw new Error('get '+r.status); return r.json(); })
+  .then(function(remote){
+    remote=remote||{}; var rd=remote.data||{}, rt=remote.ts||{}, pulled=false, needPush=false;
+    SYNC_KEYS.forEach(function(k){
+      var lt=tsOf(k), r=+rt[k]||0, has=localStorage.getItem(k)!==null;
+      if((k in rd) && r>lt){ localStorage.setItem(k,JSON.stringify(rd[k])); localStorage.setItem('jarvis_ts_'+k,String(r)); pulled=true; }
+      else if(has && ((!(k in rd)) || lt>r)){ needPush=true; }
+    });
+    if(pulled) reloadStateFromStorage();
+    if(needPush){
+      return fetch(SYNC_API+id,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(snapshot())})
+        .then(function(r){ if(!r.ok) throw new Error('put '+r.status); });
+    }
+  })
+  .then(function(){ setSyncUI('ok'); })
+  .catch(function(){ setSyncUI('err'); })
+  .then(function(){ syncBusy=false; });
+}
+function startSyncLoop(){
+  if(!syncId()||syncLoop) return;
+  syncLoop=setInterval(syncNow,60000);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) syncNow(); });
+  syncNow();
+}
+function enableSync(){
+  var now=String(Date.now());
+  SYNC_KEYS.forEach(function(k){ if(localStorage.getItem(k)!==null) localStorage.setItem('jarvis_ts_'+k,now); });
+  var b=document.getElementById('syncBtn'); if(b) b.textContent='☁️ Création…';
+  fetch(SYNC_API,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(snapshot())})
+  .then(function(r){
+    var loc=r.headers.get('Location')||r.headers.get('location');
+    if(!r.ok||!loc) throw new Error('create');
+    localStorage.setItem('jarvis_sync_id',loc.split('/').pop());
+    setSyncUI('ok'); startSyncLoop(); showSyncPanel();
+  })
+  .catch(function(){ if(b) b.textContent='☁️ Échec — réessayer'; });
+}
+function syncLink(){ return location.origin+location.pathname+'#sync='+syncId(); }
+function showSyncPanel(){ document.getElementById('syncLink').value=syncLink(); document.getElementById('syncPanel').style.display='flex'; }
+function closeSyncPanel(){ document.getElementById('syncPanel').style.display='none'; }
+function copySyncLink(){ var i=document.getElementById('syncLink'); i.select(); try{ document.execCommand('copy'); }catch(e){} }
+function disableSync(){ try{ localStorage.removeItem('jarvis_sync_id'); }catch(e){} clearInterval(syncLoop); syncLoop=null; closeSyncPanel(); setSyncUI(); }
+function syncClick(){ if(syncId()) showSyncPanel(); else enableSync(); }
 /* ---------------- Daily rollover ---------------- */
 function checkDailyRollover(){
   const todayStr = dateKey(new Date());
@@ -1322,6 +1416,8 @@ renderPipeline();
 renderAlarmDays(); renderAlarms(); syncSoundControls();
 checkDailyRollover();
 initPersistence();
+setSyncUI();
+if(window.__setupSync && !syncId()){ enableSync(); } else { startSyncLoop(); }
 
 /* ---------------- iPad: auto-update + alarm arming banner ---------------- */
 (function(){
