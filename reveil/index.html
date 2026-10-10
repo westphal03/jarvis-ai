@@ -996,7 +996,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   }
   function updAudioStatus() {
     var ok = AC && AC.state === 'running';
-    $('al-audio').textContent = ok ? '🔊 Son prêt — gardez cette page ouverte' : 'Touchez l\'écran une fois pour activer le son';
+    $('al-audio').textContent = ok ? '🔊 Son prêt — gardez cette page ouverte' : 'Touchez « Tester le son » pour activer. Pas de son ? Désactivez le mode silencieux et montez le volume.';
   }
 
   /* Prochain événement (14 jours) */
@@ -1015,14 +1015,33 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   function onAgenda(p) { agendaEvents = eventsOf(p); renderAlarm(); }
 
   /* ---------- Sons de fond (synthétisés, aucun fichier) ---------- */
+  /* iOS: un <audio> silencieux en boucle force la sortie "lecture" (sinon le mode silencieux coupe le son de WebAudio) */
+  var keep = null;
+  function startKeep() {
+    try {
+      if (!keep) {
+        var n = 8000, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
+        function w(o, t) { for (var i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); }
+        w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
+        dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
+        dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); w(36, 'data'); dv.setUint32(40, n, true);
+        for (var i = 0; i < n; i++) b[44 + i] = 128;
+        keep = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+        keep.loop = true; keep.setAttribute('playsinline', '');
+      }
+      var pr = keep.play(); if (pr && pr.catch) pr.catch(function () {});
+    } catch (e) {}
+  }
   function ctx() {
+    startKeep();
     if (!AC) {
       var C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
       try { AC = new C(); } catch (e) { return null; }
       master = AC.createGain(); master.gain.value = vol * vol; master.connect(AC.destination);
+      try { AC.onstatechange = function () { updAudioStatus(); }; } catch (e) {}
     }
-    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    if (AC.state !== 'running') { try { var rp = AC.resume(); if (rp && rp.catch) rp.catch(function () {}); } catch (e) {} }
     return AC;
   }
   function noiseBuf(type) {
@@ -1208,8 +1227,9 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   window.addEventListener('resize', function () { if (!$('night').hidden) drawStars(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('night').hidden && $('ring').hidden) exitNight(); });
   /* Déverrouille l'audio dès le premier toucher (exigé par iOS) */
-  function unlock() { if (ctx()) { updAudioStatus(); } }
-  document.addEventListener('pointerdown', unlock, { once: true });
+  function unlock() { ctx(); updAudioStatus(); }
+  ['touchend', 'click', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!AC || AC.state !== 'running') unlock(); }, true); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && AC && AC.state !== 'running') { try { AC.resume(); } catch (e) {} } });
 
   /* ---------- OpusClip (quantités) ---------- */
   var PLAT = { YOUTUBE: 'YouTube', INSTAGRAM_BUSINESS: 'Instagram', TIKTOK_BUSINESS: 'TikTok' };
