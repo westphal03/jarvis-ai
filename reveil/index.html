@@ -320,6 +320,15 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 .wx-day .t { text-transform: capitalize; }
 .wx-day .r { font-family: var(--f-mono); font-size: 14px; }
 .wx-day .p { color: var(--accent2); font-size: 13px; text-align: right; min-width: 52px; }
+
+#hello { background: rgba(5,8,16,.82); display: flex; align-items: center; justify-content: center; padding: 14px; }
+#hello[hidden] { display: none; }
+.hello-card { width: min(520px, 100%); }
+.hello-sec { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line2); }
+.hello-sec:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.hello-sec h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; font-weight: 600; }
+.hello-sec .row { font-size: 16px; line-height: 1.45; }
+.hello-sec .row .tm { opacity: .6; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -437,6 +446,15 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     <div class="panel-h"><h2>Salaberry-de-Valleyfield</h2><button class="btn" id="wx-close" type="button">✕ Fermer</button></div>
     <div id="wx-body"><div class="loading">Chargement…</div></div>
     <div class="meta" id="wx-meta" style="margin-top:10px">Source: Open-Meteo</div>
+  </div>
+</div>
+
+<!-- Bonjour (au déverrouillage) -->
+<div class="overlay" id="hello" hidden role="dialog" aria-label="Résumé du jour">
+  <div class="wx-card hello-card">
+    <div class="panel-h"><h2 id="hello-h">Bonjour</h2><span><button class="btn" id="hello-say" type="button">🔊 Lire</button> <button class="btn" id="hello-close" type="button">✕ Fermer</button></span></div>
+    <div id="hello-body"></div>
+    <label class="meta" style="display:block;margin-top:10px"><input type="checkbox" id="hello-auto"> Lire automatiquement à l'ouverture</label>
   </div>
 </div>
 
@@ -1632,6 +1650,73 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   $('wx-close').addEventListener('click', function () { $('wx').hidden = true; });
   $('wx').addEventListener('click', function (e) { if (e.target === $('wx')) $('wx').hidden = true; });
   setInterval(function () { if (!document.hidden) loadWx(); }, 20 * 60000);
+
+  /* ---------- Résumé « Bonjour » au déverrouillage ---------- */
+  var helloTimer = null, hiddenAt = 0, helloShown = 0;
+  function helloRows(arr, empty) { return arr.length ? arr.map(function (x) { return '<div class="row">' + x + '</div>'; }).join('') : '<div class="row" style="opacity:.55">' + empty + '</div>'; }
+  function buildHello() {
+    var now = new Date(), h = now.getHours();
+    var greet = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+    $('hello-h').textContent = greet + ' · ' + now.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' });
+    var out = '';
+    // Météo
+    var w = '';
+    if (wxData && wxData.current && wxData.daily) {
+      var c = wxData.current, dl = wxData.daily, inf = wxInfo(c.weather_code, c.is_day), pm = dl.precipitation_probability_max ? dl.precipitation_probability_max[0] : null;
+      w = '<div class="row">' + inf[0] + ' <b>' + deg(c.temperature_2m) + '</b> · ' + esc(inf[1]) + ' · ressenti ' + deg(c.apparent_temperature) + '</div><div class="row" style="opacity:.75">Aujourd\'hui ↑' + deg(dl.temperature_2m_max[0]) + ' ↓' + deg(dl.temperature_2m_min[0]) + (pm != null ? ' · 💧 ' + pm + '%' : '') + '</div>';
+    } else w = '<div class="row" style="opacity:.55">Météo indisponible pour le moment.</div>';
+    out += '<div class="hello-sec"><h3>Météo · Valleyfield</h3>' + w + '</div>';
+    // Événements du jour
+    var s0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), r = { start: s0, end: new Date(s0.getFullYear(), s0.getMonth(), s0.getDate() + 1) }, tk = dayKeyOf(s0), list = [];
+    try { list = agendaEvents.filter(function (e) { return e.days.indexOf(tk) >= 0; }); extraInRange(r).forEach(function (f) { if (!isDup(f, list)) list.push(f); }); list.sort(function (a, b) { return a.start - b.start; }); } catch (e) {}
+    out += '<div class="hello-sec"><h3>Aujourd\'hui</h3>' + helloRows(list.map(function (e) { return (e.emoji || '📌') + ' ' + (e.allDay ? '' : '<span class="tm">' + hm(e.start) + '</span>') + esc(e.title); }), 'Rien de prévu au calendrier.') + '</div>';
+    // Alarme
+    out += '<div class="hello-sec"><h3>Alarme</h3><div class="row">' + (alarmText ? esc(alarmText) + (alarmSub ? ' <span style="opacity:.6">(' + esc(alarmSub) + ')</span>' : '') : 'Aucun quart de travail prévu.') + '</div></div>';
+    // Tâches
+    var open = (todos || []).filter(function (t) { return !t.done && String(t.text || '').trim() && !deleted[t.id]; });
+    out += '<div class="hello-sec"><h3>À faire (' + open.length + ')</h3>' + helloRows(open.slice(0, 6).map(function (t) { return '☐ ' + esc(t.text); }).concat(open.length > 6 ? ['…et ' + (open.length - 6) + ' autre(s)'] : []), 'Rien à faire, bravo !') + '</div>';
+    // Routine
+    if (routine && routine.length) {
+      var left = routine.filter(function (x) { return !doneMap[x.id]; });
+      out += '<div class="hello-sec"><h3>Routine · ' + (routine.length - left.length) + '/' + routine.length + '</h3>' + (left.length ? helloRows(left.slice(0, 6).map(function (x) { return '○ ' + esc(x.label || x.text || ''); }), '') : '<div class="row">✅ Tout est fait !</div>') + '</div>';
+    }
+    $('hello-body').innerHTML = out;
+    helloText = $('hello-h').textContent + '. ' + plain(out).replace(/°/g, ' degrés').replace(/%/g, ' pour cent');
+  }
+
+  /* Lecture à voix haute */
+  var helloText = '';
+  function speakHello() {
+    var ss = window.speechSynthesis; if (!ss || !window.SpeechSynthesisUtterance) return false;
+    try {
+      ss.cancel();
+      var u = new SpeechSynthesisUtterance(helloText), vs = ss.getVoices() || [], v = null;
+      for (var i = 0; i < vs.length && !v; i++) if (/^fr[-_]CA/i.test(vs[i].lang)) v = vs[i];
+      for (var j = 0; j < vs.length && !v; j++) if (/^fr/i.test(vs[j].lang)) v = vs[j];
+      if (v) u.voice = v; u.lang = v ? v.lang : 'fr-CA'; u.rate = 0.95;
+      ss.speak(u); return true;
+    } catch (e) { return false; }
+  }
+  function stopSpeak() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
+  function plain(h) { var d = document.createElement('div'); d.innerHTML = h.replace(/<\/(div|h3)>/g, '. </$1>'); return (d.textContent || '').replace(/[☐○✅💧↑↓]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function openHello() {
+    if (!$('ring').hidden || !$('night').hidden) return;
+    try { buildHello(); } catch (e) { return; }
+    $('hello').hidden = false; helloShown = Date.now();
+    if (lsGet('dash.helloAuto') === '1') speakHello();
+    clearTimeout(helloTimer); helloTimer = setTimeout(closeHello, 90000);
+  }
+  function closeHello() { stopSpeak(); $('hello').hidden = true; clearTimeout(helloTimer); }
+  $('hello-close').addEventListener('click', closeHello);
+  $('hello-say').addEventListener('click', function () { clearTimeout(helloTimer); if (!speakHello()) alert('La lecture vocale n\'est pas disponible sur cet appareil.'); });
+  $('hello-auto').checked = lsGet('dash.helloAuto') === '1';
+  $('hello-auto').addEventListener('change', function () { lsSet('dash.helloAuto', this.checked ? '1' : '0'); });
+  $('hello').addEventListener('click', function (e) { if (e.target === $('hello')) closeHello(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 120000) setTimeout(openHello, 600);
+  });
+  setTimeout(openHello, 2500);
 
   /* ---------- Stockage local + synchro (version autonome pour GitHub Pages) ---------- */
   var DBKEY = 'reveil_db', SYNC_API = 'https://jsonblob.com/api/jsonBlob/';
