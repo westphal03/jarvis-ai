@@ -238,7 +238,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   .btn { min-height: 36px; padding: 0 10px; font-size: 13px; }
   /* Alarme */
   #p-alarm .panel-h { margin-bottom: 0; }
-  .al-time { font-size: 44px; }
+  .al-time { font-size: 38px; }
   .al-sub { margin: 2px 0 6px; font-size: 13px; }
   .al-row { padding: 5px 0; gap: 6px; font-size: 13px; }
   .stepper button { width: 40px; height: 36px; } .stepper b { min-width: 60px; font-size: 13px; }
@@ -288,18 +288,25 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   .hm { font-size: 46px; }
   .chip .s { display: none; }
   .tools { margin-left: auto; }
-  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(0, 1.05fr);
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1.55fr) minmax(0, 1.05fr);
     grid-template-areas: "notes alarm" "cal cal" "rout snd"; }
   .cell { min-height: 0; }
   .ec .et { display: none; }
   .evs { flex-direction: row; flex-wrap: wrap; }
   .ec { background: transparent; font-size: 15px; padding: 0; }
-  .al-time { font-size: 38px; }
+  .al-time { font-size: 32px; }
+  .al-sub { margin: 0 0 2px; }
+  #al-audio { padding-top: 2px !important; font-size: 10px; }
   .snd .e { font-size: 17px; } .snd { min-height: 38px; } .tm { min-height: 30px; }
   #day-detail { max-height: 58px; }
   #timer-left { display: none; }
   .vol-row, .timer { margin-top: 5px; }
 }
+
+.snd-pick { display: flex; gap: 6px; align-items: center; min-width: 0; flex: 1; justify-content: flex-end; }
+.snd-pick select { min-width: 0; flex: 1 1 120px; max-width: 220px; min-height: 40px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); padding: 0 8px; font-size: 14px; }
+.snd-pick .btn { min-width: 40px; padding: 0 8px; }
+@media (min-width: 700px) and (min-height: 560px) { .snd-pick select { min-height: 36px; font-size: 13px; } .snd-pick .btn { min-height: 36px; min-width: 36px; } }
 </style>
 </head>
 <body>
@@ -363,10 +370,13 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
         <div class="panel-h"><h2 id="h-alarm">⏰ Alarme travail</h2><button class="switch" id="al-on" type="button" role="switch" aria-pressed="true" aria-label="Alarme activée"></button></div>
         <div class="al-time" id="al-time">--:--</div>
         <div class="al-sub" id="al-sub">Recherche de votre prochain quart de travail…</div>
-        <div class="al-row"><span>Avant le début du travail</span>
+        <div class="al-row"><span>Avant le travail</span>
           <div class="stepper"><button id="al-minus" type="button" aria-label="Moins 15 minutes">−</button><b id="al-off">1 h 30</b><button id="al-plus" type="button" aria-label="Plus 15 minutes">+</button></div>
         </div>
-        <div class="al-row"><span class="meta" id="al-audio">Son non activé</span><button class="btn" id="al-test" type="button">🔔 Tester le son</button></div>
+        <div class="al-row"><span>Sonnerie</span>
+          <div class="snd-pick"><select id="al-sound" aria-label="Choisir la sonnerie"></select><button class="btn" id="al-prev" type="button" aria-label="Écouter la sonnerie">▶</button><button class="btn" id="al-pick" type="button" aria-label="Choisir ma propre musique" title="Ma musique">📁</button><input type="file" id="al-file" accept="audio/*" hidden></div>
+        </div>
+        <div class="meta" id="al-audio" style="padding-top:6px">Son non activé</div>
         <div id="al-status"></div>
         <div class="meta" id="al-meta">Basée sur les événements « Travail » de votre calendrier Jarvis</div>
       </section>
@@ -482,7 +492,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   var routine = undefined, doneMap = {}, curDay = dayKeyOf(new Date()), unsubLog = null;
   var dates = [], events = {}, recurring = [];
   var agendaEvents = [], nextEvent = undefined, pubStats = undefined;
-  var alarm = { on: true, offset: 90 }, snooze = null, ringing = null, lastMin = '';
+  var alarm = { on: true, offset: 90, sound: 'beep', customName: '' }, snooze = null, ringing = null, lastMin = '';
   var unsubs = [];
   var viewY = new Date().getFullYear(), viewM = new Date().getMonth(), selKey = curDay;
   var monthEvents = [], loadTok = 0;
@@ -808,7 +818,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     db.doc('config/alarm').onSnapshot(function (s) {
       if (s.exists) {
         var a = s.data() || {};
-        alarm = { on: a.on !== false, offset: typeof a.offset === 'number' ? a.offset : 90 };
+        alarm = { on: a.on !== false, offset: typeof a.offset === 'number' ? a.offset : 90, sound: a.sound || 'beep', customName: a.customName || '' }; syncSoundSelect();
       }
       renderAlarm();
     }, dbFail);
@@ -1039,13 +1049,12 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   }
   function saveAlarm() {
     lsSet('dash.alarm', JSON.stringify(alarm));
-    if (db) db.doc('config/alarm').set({ on: alarm.on, offset: alarm.offset }).catch(dbFail);
+    if (db) db.doc('config/alarm').set({ on: alarm.on, offset: alarm.offset, sound: alarm.sound, customName: alarm.customName }).catch(dbFail);
     renderAlarm();
   }
   $('al-on').addEventListener('click', function () { ctx(); alarm.on = !alarm.on; saveAlarm(); });
   $('al-minus').addEventListener('click', function () { alarm.offset = Math.max(0, alarm.offset - 15); saveAlarm(); });
   $('al-plus').addEventListener('click', function () { alarm.offset = Math.min(360, alarm.offset + 15); saveAlarm(); });
-  $('al-test').addEventListener('click', function () { if (ctx()) beepSeq(0.35); updAudioStatus(); });
   function checkAlarm() {
     if (ringing || !alarm.on) return;
     var a = pendingAlarm(); if (!a) return;
@@ -1060,19 +1069,157 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('ring-time').textContent = hm(new Date());
     $('ring-sub').textContent = 'Travail à ' + hm(a.shift.start) + ' · ' + whenShort(a.shift.start);
     $('ring').hidden = false;
-    ringBeep();
-    ringIv = setInterval(ringBeep, 1500);
+    ringLoop();
   }
-  function ringBeep() {
+  function ringLoop() {
     try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
-    if (!ctx()) return;
-    beepSeq(Math.min(0.75, 0.1 + (Date.now() - ringT0) / 60000 * 0.65));
+    var dur = 2;
+    try { dur = playAlarm(alarm.sound, Math.min(0.75, 0.1 + (Date.now() - ringT0) / 60000 * 0.65)); } catch (e) {}
+    ringIv = setTimeout(ringLoop, ((dur || 2) + 0.5) * 1000);
   }
   function stopRing() {
-    clearInterval(ringIv); ringIv = null; $('ring').hidden = true;
+    clearTimeout(ringIv); ringIv = null; stopCustom(); $('ring').hidden = true;
   }
   $('ring-stop').addEventListener('click', function () { if (ringing) markDone(ringing.key); ringing = null; snooze = null; stopRing(); renderAlarm(); });
   $('ring-snooze').addEventListener('click', function () { if (ringing) snooze = { key: ringing.key, until: Date.now() + 9 * 60000 }; ringing = null; stopRing(); });
+
+  /* ---------- Sonneries (toutes synthétisées; mélodies du domaine public) ---------- */
+  var NOTE_BASE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  function NF(n) { var m = /^([A-G])([#b]?)(\d)$/.exec(n); var b = NOTE_BASE[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); return 440 * Math.pow(2, ((+m[3] + 1) * 12 + b - 69) / 12); }
+  function tone(c, t, f, d, lvl, type) {
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(lvl, 0.001), t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(d, 0.05));
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + Math.max(d, 0.05) + 0.05);
+  }
+  function melody(c, t, notes, bpm, lvl, type) {
+    var b = 60 / bpm, x = t;
+    notes.forEach(function (n) {
+      var d = n[1] * b;
+      if (n[0] !== 'r') { var f = NF(n[0]); tone(c, x, f, d * 0.95, lvl, type || 'triangle'); tone(c, x, f * 2, d * 0.55, lvl * 0.22, 'sine'); }
+      x += d;
+    });
+    return x - t;
+  }
+  function voice(c, t, lvl, freqs, times, filters, dur, vib) {
+    /* voix synthétique: dent de scie filtrée, trajectoire de hauteur donnée */
+    var o = c.createOscillator(), g = c.createGain(), out = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(freqs[0], t);
+    for (var i = 1; i < freqs.length; i++) o.frequency.linearRampToValueAtTime(freqs[i], t + times[i]);
+    if (vib) { var l = c.createOscillator(), lg = c.createGain(); l.frequency.value = vib[0]; lg.gain.value = vib[1]; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + 0.1); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(lvl, 0.001), t + 0.02);
+    g.gain.setValueAtTime(Math.max(lvl, 0.001), t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    filters.forEach(function (f) { var b = c.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = f[0]; b.Q.value = f[1]; var fg = c.createGain(); fg.gain.value = f[2]; g.connect(b); b.connect(fg); fg.connect(out); });
+    out.connect(c.destination); o.start(t); o.stop(t + dur + 0.1);
+  }
+  function quack(c, t, lvl, f0) { voice(c, t, lvl * 2.2, [f0 * 1.25, f0 * 0.7], [0, 0.17], [[1000, 2.5, 1], [2300, 3, 0.55], [450, 2, 0.6]], 0.2, [38, 12]); }
+  var SONGS = {
+    ode: { bpm: 130, n: [['E4',1],['E4',1],['F4',1],['G4',1],['G4',1],['F4',1],['E4',1],['D4',1],['C4',1],['C4',1],['D4',1],['E4',1],['E4',1.5],['D4',.5],['D4',2],['E4',1],['E4',1],['F4',1],['G4',1],['G4',1],['F4',1],['E4',1],['D4',1],['C4',1],['C4',1],['D4',1],['E4',1],['D4',1.5],['C4',.5],['C4',2]] },
+    elise: { bpm: 112, n: [['E5',.5],['D#5',.5],['E5',.5],['D#5',.5],['E5',.5],['B4',.5],['D5',.5],['C5',.5],['A4',1.5],['r',.5],['C4',.5],['E4',.5],['A4',.5],['B4',1.5],['r',.5],['E4',.5],['G#4',.5],['B4',.5],['C5',1.5],['r',.5],['E4',.5],['E5',.5],['D#5',.5],['E5',.5],['D#5',.5],['E5',.5],['B4',.5],['D5',.5],['C5',.5],['A4',1.5]] },
+    fifth: { bpm: 108, n: [['r',.5],['G4',.5],['G4',.5],['G4',.5],['Eb4',3],['r',.5],['F4',.5],['F4',.5],['F4',.5],['D4',3],['r',.5],['G4',.5],['G4',.5],['G4',.5],['Eb4',3],['r',.5],['F4',.5],['F4',.5],['F4',.5],['D4',3]] },
+    nacht: { bpm: 132, n: [['G4',1],['r',.5],['D4',.5],['G4',1],['r',.5],['D4',.5],['G4',.5],['D4',.5],['G4',.5],['B4',.5],['D5',2],['C5',1],['r',.5],['A4',.5],['C5',1],['r',.5],['A4',.5],['C5',.5],['A4',.5],['F#4',.5],['A4',.5],['D4',2]] },
+    jacques: { bpm: 126, n: [['C4',1],['D4',1],['E4',1],['C4',1],['C4',1],['D4',1],['E4',1],['C4',1],['E4',1],['F4',1],['G4',2],['E4',1],['F4',1],['G4',2],['G4',.5],['A4',.5],['G4',.5],['F4',.5],['E4',1],['C4',1],['G4',.5],['A4',.5],['G4',.5],['F4',.5],['E4',1],['C4',1],['C4',1],['G3',1],['C4',2],['C4',1],['G3',1],['C4',2]] },
+    lune: { bpm: 112, n: [['C4',1],['C4',1],['C4',1],['D4',1],['E4',2],['D4',2],['C4',1],['E4',1],['D4',1],['D4',1],['C4',4]] },
+    twinkle: { bpm: 126, n: [['C4',1],['C4',1],['G4',1],['G4',1],['A4',1],['A4',1],['G4',2],['F4',1],['F4',1],['E4',1],['E4',1],['D4',1],['D4',1],['C4',2],['G4',1],['G4',1],['F4',1],['F4',1],['E4',1],['E4',1],['D4',2],['G4',1],['G4',1],['F4',1],['F4',1],['E4',1],['E4',1],['D4',2]] },
+    turque: { bpm: 150, n: [['B4',.25],['A4',.25],['G#4',.25],['A4',.25],['C5',1],['D5',.25],['C5',.25],['B4',.25],['C5',.25],['E5',1],['F5',.25],['E5',.25],['D#5',.25],['E5',.25],['B5',.25],['A5',.25],['G#5',.25],['A5',.25],['B5',.25],['A5',.25],['G#5',.25],['A5',.25],['C6',1]] },
+    fanfare: { bpm: 84, n: [['C4',1],['G4',1],['C5',3],['C4',1],['G4',1],['C5',3],['C4',1],['G4',1],['C5',1.5],['E5',1.5],['G5',3],['C6',3]] }
+  };
+  function song(id) { return function (c, t, lvl) { return melody(c, t, SONGS[id].n, SONGS[id].bpm, lvl * 0.7) + 0.6; }; }
+  var ALARM_SOUNDS = [
+    { id: 'beep', g: 'Classiques', name: '🔔 Bips classiques', play: function (c, t, l) { [0, 0.2, 0.4, 0.6].forEach(function (dt, i) { tone(c, t + dt, i % 2 ? 1175 : 880, 0.17, l, 'triangle'); }); return 1.0; } },
+    { id: 'bell', g: 'Classiques', name: '⏰ Vieux réveil à cloches', play: function (c, t, l) { for (var r = 0; r < 2; r++) for (var i = 0; i < 18; i++) { tone(c, t + r * 0.9 + i * 0.042, i % 2 ? 2100 : 1750, 0.04, l * 0.7, 'square'); } return 1.9; } },
+    { id: 'phone', g: 'Classiques', name: '☎️ Téléphone ancien', play: function (c, t, l) { for (var r = 0; r < 2; r++) { for (var i = 0; i < 8; i++) { tone(c, t + r * 1.4 + i * 0.05, 440, 0.045, l * 0.6, 'sine'); tone(c, t + r * 1.4 + i * 0.05, 480, 0.045, l * 0.6, 'sine'); } } return 2.4; } },
+    { id: 'siren', g: 'Classiques', name: '🚨 Sirène', play: function (c, t, l) { var o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; for (var i = 0; i < 4; i++) { o.frequency.linearRampToValueAtTime(i % 2 ? 650 : 1250, t + 0.01 + i * 0.5); } g.gain.value = l * 0.5; o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 2); return 2; } },
+    { id: 'horn', g: 'Classiques', name: '📯 Klaxon', play: function (c, t, l) { tone(c, t, 392, 0.35, l * 0.8, 'sawtooth'); tone(c, t + 0.4, 523, 0.6, l * 0.8, 'sawtooth'); return 1.2; } },
+    { id: 'arcade', g: 'Classiques', name: '🕹️ Jeu vidéo 8 bits', play: function (c, t, l) { var seq = ['C5', 'E5', 'G5', 'C6', 'G5', 'E5', 'C5', 'G5', 'C6', 'E6']; seq.forEach(function (n, i) { tone(c, t + i * 0.09, NF(n), 0.08, l * 0.55, 'square'); }); return 1.2; } },
+    { id: 'chime', g: 'Doux', name: '🎐 Carillon', play: function (c, t, l) { ['C5', 'E5', 'G5', 'C6', 'E6'].forEach(function (n, i) { tone(c, t + i * 0.3, NF(n), 1.2, l * 0.8, 'sine'); tone(c, t + i * 0.3, NF(n) * 2.76, 0.5, l * 0.15, 'sine'); }); return 2.6; } },
+    { id: 'marimba', g: 'Doux', name: '🪘 Marimba', play: function (c, t, l) { ['C5', 'E5', 'G5', 'E5', 'C5', 'E5', 'G5', 'C6'].forEach(function (n, i) { tone(c, t + i * 0.16, NF(n), 0.22, l, 'triangle'); }); return 1.6; } },
+    { id: 'gong', g: 'Doux', name: '🔔 Gong zen', play: function (c, t, l) { [1, 2.76, 5.4].forEach(function (m, i) { tone(c, t, 196 * m, 3.2 - i * 0.7, l * (0.9 - i * 0.28), 'sine'); }); return 3.6; } },
+    { id: 'birds', g: 'Doux', name: '🐦 Oiseaux du matin', play: function (c, t, l) { for (var k = 0; k < 7; k++) { var t0 = t + k * 0.28 + Math.random() * 0.1, base = 2400 + Math.random() * 1800; var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(base, t0); o.frequency.exponentialRampToValueAtTime(base * 1.4, t0 + 0.08); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(l * 0.5, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12); o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + 0.14); } return 2.4; } },
+    { id: 'duck', g: 'Animaux', name: '🦆 Canard', play: function (c, t, l) { [0, 0.34, 0.68, 1.1, 1.44].forEach(function (dt, i) { quack(c, t + dt, l, 470 + (i % 2) * 40); }); return 1.9; } },
+    { id: 'duckx', g: 'Animaux', name: '🦆 Canard enragé', play: function (c, t, l) { for (var i = 0; i < 9; i++) quack(c, t + i * 0.19, l, 520 + (i % 3) * 50); return 1.9; } },
+    { id: 'rooster', g: 'Animaux', name: '🐓 Coq (cocorico)', play: function (c, t, l) { voice(c, t, l * 1.6, [650, 880, 760, 1000, 1150, 1100, 700, 480], [0, 0.18, 0.28, 0.45, 0.8, 1.3, 1.6, 2.1], [[1300, 2, 1], [2500, 3, 0.5], [700, 2, 0.5]], 2.2, [6, 25]); return 3.0; } },
+    { id: 'cat', g: 'Animaux', name: '🐱 Chat (miaou)', play: function (c, t, l) { for (var i = 0; i < 2; i++) voice(c, t + i * 1.1, l * 1.6, [600, 950, 800, 520], [0, 0.18, 0.4, 0.8], [[1800, 5, 1], [900, 3, 0.5]], 0.9, [5, 14]); return 2.3; } },
+    { id: 'ode', g: 'Mélodies', name: '🎼 Ode à la joie (Beethoven)', play: song('ode') },
+    { id: 'elise', g: 'Mélodies', name: '🎹 Pour Élise (Beethoven)', play: song('elise') },
+    { id: 'fifth', g: 'Mélodies', name: '⚡ 5e symphonie (Beethoven)', play: song('fifth') },
+    { id: 'nacht', g: 'Mélodies', name: '🎻 Petite musique de nuit (Mozart)', play: song('nacht') },
+    { id: 'turque', g: 'Mélodies', name: '🥁 Marche turque (Mozart)', play: song('turque') },
+    { id: 'jacques', g: 'Mélodies', name: '🔔 Frère Jacques (« Dormez-vous ? »)', play: song('jacques') },
+    { id: 'lune', g: 'Mélodies', name: '🌙 Au clair de la lune', play: song('lune') },
+    { id: 'twinkle', g: 'Mélodies', name: '⭐ Ah ! vous dirai-je, maman', play: song('twinkle') },
+    { id: 'fanfare', g: 'Mélodies', name: '🌅 Fanfare du soleil levant', play: song('fanfare') }
+  ];
+  window.__alarmSounds = ALARM_SOUNDS;
+  /* Ma musique (fichier choisi sur l'iPad, gardé dans le navigateur) */
+  var customEl = null, customUrl = null, prevTO = null;
+  function idb(fn) {
+    return new Promise(function (res, rej) {
+      try {
+        var rq = indexedDB.open('reveil', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('files'); };
+        rq.onsuccess = function () { try { fn(rq.result, res, rej); } catch (e) { rej(e); } };
+        rq.onerror = function () { rej(rq.error); };
+      } catch (e) { rej(e); }
+    });
+  }
+  function idbPut(k, v) { return idb(function (d, res, rej) { var tx = d.transaction('files', 'readwrite'); tx.objectStore('files').put(v, k); tx.oncomplete = function () { res(); }; tx.onerror = function () { rej(tx.error); }; }); }
+  function idbGet(k) { return idb(function (d, res, rej) { var r = d.transaction('files').objectStore('files').get(k); r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }
+  function setCustomBlob(blob) {
+    if (customUrl) { try { URL.revokeObjectURL(customUrl); } catch (e) {} }
+    customUrl = URL.createObjectURL(blob);
+    customEl = new Audio(customUrl); customEl.loop = true; customEl.setAttribute('playsinline', '');
+    customEl.preload = 'auto';
+  }
+  function loadCustom() { idbGet('alarm').then(function (b) { if (b) setCustomBlob(b); }).catch(function () {}); }
+  function primeCustom() {
+    if (!customEl || customEl.__primed) return;
+    customEl.__primed = true;
+    try { customEl.muted = true; var p = customEl.play(); var undo = function () { try { customEl.pause(); customEl.currentTime = 0; customEl.muted = false; } catch (e) {} }; if (p && p.then) p.then(undo).catch(function () { customEl.muted = false; customEl.__primed = false; }); else undo(); } catch (e) {}
+  }
+  function stopCustom() { clearTimeout(prevTO); if (customEl) { try { customEl.pause(); customEl.currentTime = 0; } catch (e) {} } }
+  function playAlarm(id, lvl) {
+    if (id === 'custom') {
+      if (customEl) { if (customEl.paused) { try { customEl.muted = false; var p = customEl.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} } return 5; }
+      id = 'beep';
+    }
+    var c = ctx(); if (!c) return 2;
+    var def = ALARM_SOUNDS.filter(function (s) { return s.id === id; })[0] || ALARM_SOUNDS[0];
+    return def.play(c, c.currentTime + 0.03, lvl);
+  }
+  function syncSoundSelect() {
+    var sel = $('al-sound'); if (!sel) return;
+    var groups = {}, order = [];
+    ALARM_SOUNDS.forEach(function (s) { if (!groups[s.g]) { groups[s.g] = []; order.push(s.g); } groups[s.g].push(s); });
+    var html = order.map(function (g) { return '<optgroup label="' + esc(g) + '">' + groups[g].map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    html += '<optgroup label="Ma musique"><option value="custom">' + esc('🎵 ' + (alarm.customName || 'Ma musique (choisir un fichier)')) + '</option></optgroup>';
+    sel.innerHTML = html; sel.value = alarm.sound;
+    if (sel.value !== alarm.sound) sel.value = 'beep';
+  }
+  $('al-sound').addEventListener('change', function () {
+    alarm.sound = this.value; saveAlarm();
+    if (this.value === 'custom' && !customEl) $('al-file').click();
+  });
+  $('al-prev').addEventListener('click', function () {
+    if (customEl && !customEl.paused) { stopCustom(); return; }
+    if (!ctx()) return;
+    stopCustom();
+    playAlarm(alarm.sound, 0.45);
+    if (alarm.sound === 'custom') prevTO = setTimeout(stopCustom, 10000);
+    updAudioStatus();
+  });
+  $('al-pick').addEventListener('click', function () { $('al-file').click(); });
+  $('al-file').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    setCustomBlob(f);
+    alarm.sound = 'custom'; alarm.customName = f.name.replace(/\.[^.]+$/, '').slice(0, 40);
+    idbPut('alarm', f).catch(function () { $('al-audio').textContent = 'Fichier gardé pour cette session seulement.'; });
+    syncSoundSelect(); saveAlarm();
+    customEl.__primed = false; primeCustom();
+    this.value = '';
+  });
   function beepSeq(level) {
     var c = AC; if (!c) return;
     var t = c.currentTime;
@@ -1088,7 +1235,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   }
   function updAudioStatus() {
     var ok = AC && AC.state === 'running';
-    $('al-audio').textContent = ok ? '🔊 Son prêt — gardez cette page ouverte' : 'Touchez « Tester le son » pour activer. Pas de son ? Désactivez le mode silencieux et montez le volume.';
+    $('al-audio').textContent = ok ? '🔊 Son prêt — gardez cette page ouverte' : 'Touchez ▶ pour activer le son. Pas de son ? Désactivez le mode silencieux et montez le volume.';
   }
 
   /* Prochain événement (14 jours) */
@@ -1110,6 +1257,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   /* iOS: un <audio> silencieux en boucle force la sortie "lecture" (sinon le mode silencieux coupe le son de WebAudio) */
   var keep = null;
   function startKeep() {
+    try { primeCustom(); } catch (e) {}
     try {
       if (!keep) {
         var n = 8000, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
@@ -1514,7 +1662,9 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   try { var sv = parseFloat(lsGet('dash.vol')); if (!isNaN(sv)) vol = Math.max(0, Math.min(1, sv)); } catch (e) {}
   setVol(vol);
   var sd = parseInt(lsGet('dash.dim'), 10); setDim(isNaN(sd) ? 35 : Math.max(8, Math.min(100, sd)));
-  try { var sa = JSON.parse(lsGet('dash.alarm') || 'null'); if (sa && typeof sa.offset === 'number') alarm = { on: sa.on !== false, offset: sa.offset }; } catch (e) {}
+  try { var sa = JSON.parse(lsGet('dash.alarm') || 'null'); if (sa && typeof sa.offset === 'number') alarm = { on: sa.on !== false, offset: sa.offset, sound: sa.sound || 'beep', customName: sa.customName || '' }; } catch (e) {}
+  syncSoundSelect();
+  loadCustom();
   renderMonth();
   renderAlarm();
   initDb();
