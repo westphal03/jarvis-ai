@@ -396,6 +396,9 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
         <div class="al-row"><span>Avant le travail</span>
           <div class="stepper"><button id="al-minus" type="button" aria-label="Moins 15 minutes">−</button><b id="al-off">1 h 30</b><button id="al-plus" type="button" aria-label="Plus 15 minutes">+</button></div>
         </div>
+        <div class="al-row"><span>Heure précise</span>
+          <div class="stepper"><input type="time" id="al-manual" aria-label="Régler l'heure à la main" style="background:transparent;border:0;color:inherit;font:inherit;font-size:16px;padding:0 4px;width:132px;min-width:0"><button id="al-auto" type="button" aria-label="Revenir au calcul automatique" title="Revenir à l'automatique" style="width:auto;padding:0 10px;font-size:14px">Auto</button></div>
+        </div>
         <div class="al-row"><span>Sonnerie</span>
           <div class="snd-pick"><select id="al-sound" aria-label="Choisir la sonnerie"></select><button class="btn" id="al-prev" type="button" aria-label="Écouter la sonnerie">▶</button><button class="btn" id="al-pick" type="button" aria-label="Choisir ma propre musique" title="Ma musique">📁</button><input type="file" id="al-file" accept="audio/*" hidden></div>
         </div>
@@ -452,9 +455,8 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 <!-- Bonjour (au déverrouillage) -->
 <div class="overlay" id="hello" hidden role="dialog" aria-label="Résumé du jour">
   <div class="wx-card hello-card">
-    <div class="panel-h"><h2 id="hello-h">Bonjour</h2><span><button class="btn" id="hello-say" type="button">🔊 Lire</button> <button class="btn" id="hello-close" type="button">✕ Fermer</button></span></div>
+    <div class="panel-h"><h2 id="hello-h">Bonjour</h2><button class="btn" id="hello-close" type="button">✕ Fermer</button></div>
     <div id="hello-body"></div>
-    <label class="meta" style="display:block;margin-top:10px"><input type="checkbox" id="hello-auto"> Lire automatiquement à l'ouverture</label>
   </div>
 </div>
 
@@ -1053,7 +1055,12 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     Object.keys(m).forEach(function (k) { if (+k.split('|')[0] > cut) o[k] = true; });
     o[key] = true; lsSet('dash.alarmDone', JSON.stringify(o));
   }
-  function alarmFor(shift) { return { shift: shift, at: shift.start.getTime() - alarm.offset * 60000, key: shift.start.getTime() + '|' + alarm.offset }; }
+  function getManual() { try { return JSON.parse(lsGet('dash.alarmManual') || 'null'); } catch (e) { return null; } }
+  function alarmFor(shift) {
+    var at = shift.start.getTime() - alarm.offset * 60000, m = getManual(), key = shift.start.getTime() + '|' + alarm.offset;
+    if (m && m.s === shift.start.getTime()) { at = m.at; key += '|m' + m.at; }
+    return { shift: shift, at: at, key: key, manual: !!(m && m.s === shift.start.getTime()) };
+  }
   function pendingAlarm() {
     var done = doneAlarms(), now = Date.now();
     var list = upcomingShifts();
@@ -1071,11 +1078,13 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('al-on').setAttribute('aria-pressed', String(alarm.on));
     $('al-on').setAttribute('aria-label', alarm.on ? 'Alarme activée' : 'Alarme désactivée');
     $('al-off').textContent = offLabel(alarm.offset);
+    var mi = $('al-manual'); if (mi && document.activeElement !== mi) mi.value = a ? hm(new Date(a.at)) : '';
+    $('al-auto').style.opacity = a && a.manual ? '1' : '.45';
     var t = $('al-time');
     t.classList.toggle('off', !alarm.on);
     if (a) {
       t.textContent = hm(new Date(a.at));
-      alarmSub = (alarm.on ? '' : 'Désactivée · ') + 'Travail ' + whenShort(a.shift.start) + ' à ' + hm(a.shift.start);
+      alarmSub = (alarm.on ? '' : 'Désactivée · ') + (a.manual ? 'Heure réglée à la main · ' : '') + 'Travail ' + whenShort(a.shift.start) + ' à ' + hm(a.shift.start);
       alarmText = (alarm.on ? '⏰ ' : '⏰ (désactivée) ') + hm(new Date(a.at)) + ' · travail ' + hm(a.shift.start);
       $('s-alarm').textContent = alarm.on ? hm(new Date(a.at)) : 'Off';
       $('s-alarm-s').textContent = whenShort(a.shift.start);
@@ -1095,6 +1104,13 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     renderAlarm();
   }
   $('al-on').addEventListener('click', function () { ctx(); alarm.on = !alarm.on; saveAlarm(); });
+  $('al-manual').addEventListener('change', function () {
+    var a = pendingAlarm(), m = String(this.value).match(/^(\d{1,2}):(\d{2})/); if (!a || !m) return;
+    var d = new Date(a.shift.start.getFullYear(), a.shift.start.getMonth(), a.shift.start.getDate(), +m[1], +m[2]);
+    if (d.getTime() > a.shift.start.getTime()) d.setDate(d.getDate() - 1);
+    lsSet('dash.alarmManual', JSON.stringify({ s: a.shift.start.getTime(), at: d.getTime() })); renderAlarm();
+  });
+  $('al-auto').addEventListener('click', function () { lsSet('dash.alarmManual', 'null'); renderAlarm(); });
   $('al-minus').addEventListener('click', function () { alarm.offset = Math.max(0, alarm.offset - 15); saveAlarm(); });
   $('al-plus').addEventListener('click', function () { alarm.offset = Math.min(360, alarm.offset + 15); saveAlarm(); });
   function checkAlarm() {
@@ -1652,7 +1668,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   setInterval(function () { if (!document.hidden) loadWx(); }, 20 * 60000);
 
   /* ---------- Résumé « Bonjour » au déverrouillage ---------- */
-  var helloTimer = null, hiddenAt = 0, helloShown = 0;
+  var helloTimer = null, hiddenAt = 0;
   function helloRows(arr, empty) { return arr.length ? arr.map(function (x) { return '<div class="row">' + x + '</div>'; }).join('') : '<div class="row" style="opacity:.55">' + empty + '</div>'; }
   function buildHello() {
     var now = new Date(), h = now.getHours();
@@ -1681,36 +1697,16 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
       out += '<div class="hello-sec"><h3>Routine · ' + (routine.length - left.length) + '/' + routine.length + '</h3>' + (left.length ? helloRows(left.slice(0, 6).map(function (x) { return '○ ' + esc(x.label || x.text || ''); }), '') : '<div class="row">✅ Tout est fait !</div>') + '</div>';
     }
     $('hello-body').innerHTML = out;
-    helloText = $('hello-h').textContent + '. ' + plain(out).replace(/°/g, ' degrés').replace(/%/g, ' pour cent');
   }
 
-  /* Lecture à voix haute */
-  var helloText = '';
-  function speakHello() {
-    var ss = window.speechSynthesis; if (!ss || !window.SpeechSynthesisUtterance) return false;
-    try {
-      ss.cancel();
-      var u = new SpeechSynthesisUtterance(helloText), vs = ss.getVoices() || [], v = null;
-      for (var i = 0; i < vs.length && !v; i++) if (/^fr[-_]CA/i.test(vs[i].lang)) v = vs[i];
-      for (var j = 0; j < vs.length && !v; j++) if (/^fr/i.test(vs[j].lang)) v = vs[j];
-      if (v) u.voice = v; u.lang = v ? v.lang : 'fr-CA'; u.rate = 0.95;
-      ss.speak(u); return true;
-    } catch (e) { return false; }
-  }
-  function stopSpeak() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
-  function plain(h) { var d = document.createElement('div'); d.innerHTML = h.replace(/<\/(div|h3)>/g, '. </$1>'); return (d.textContent || '').replace(/[☐○✅💧↑↓]/g, ' ').replace(/\s+/g, ' ').trim(); }
   function openHello() {
     if (!$('ring').hidden || !$('night').hidden) return;
     try { buildHello(); } catch (e) { return; }
-    $('hello').hidden = false; helloShown = Date.now();
-    if (lsGet('dash.helloAuto') === '1') speakHello();
+    $('hello').hidden = false;
     clearTimeout(helloTimer); helloTimer = setTimeout(closeHello, 90000);
   }
-  function closeHello() { stopSpeak(); $('hello').hidden = true; clearTimeout(helloTimer); }
+  function closeHello() { $('hello').hidden = true; clearTimeout(helloTimer); }
   $('hello-close').addEventListener('click', closeHello);
-  $('hello-say').addEventListener('click', function () { clearTimeout(helloTimer); if (!speakHello()) alert('La lecture vocale n\'est pas disponible sur cet appareil.'); });
-  $('hello-auto').checked = lsGet('dash.helloAuto') === '1';
-  $('hello-auto').addEventListener('change', function () { lsSet('dash.helloAuto', this.checked ? '1' : '0'); });
   $('hello').addEventListener('click', function (e) { if (e.target === $('hello')) closeHello(); });
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) { hiddenAt = Date.now(); return; }
