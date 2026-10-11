@@ -307,6 +307,19 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 .snd-pick select { min-width: 0; flex: 1 1 120px; max-width: 220px; min-height: 40px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); padding: 0 8px; font-size: 14px; }
 .snd-pick .btn { min-width: 40px; padding: 0 8px; }
 @media (min-width: 700px) and (min-height: 560px) { .snd-pick select { min-height: 36px; font-size: 13px; } .snd-pick .btn { min-height: 36px; min-width: 36px; } }
+
+#wx { z-index: 70; background: rgba(5,7,12,.7); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#wx[hidden] { display: none; }
+.wx-card { width: min(460px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 22px; padding: 16px 18px 18px; }
+.wx-now { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.wx-now .big { font-family: var(--f-head); font-size: 56px; font-weight: 700; line-height: 1; }
+.wx-now .em { font-size: 52px; line-height: 1; }
+.wx-now .d { color: var(--muted); font-size: 14px; }
+.wx-day { display: grid; grid-template-columns: 90px 34px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.wx-day .e { font-size: 22px; text-align: center; }
+.wx-day .t { text-transform: capitalize; }
+.wx-day .r { font-family: var(--f-mono); font-size: 14px; }
+.wx-day .p { color: var(--accent2); font-size: 13px; text-align: right; min-width: 52px; }
 </style>
 </head>
 <body>
@@ -320,6 +333,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
       <div class="chip"><div class="k">À faire</div><div class="v" id="s-todo">–</div><div class="s" id="s-todo-s">&nbsp;</div></div>
       <div class="chip"><div class="k">Routine</div><div class="v" id="s-rout">–</div><div class="s" id="s-rout-s">&nbsp;</div></div>
       <div class="chip"><div class="k">Prochain</div><div class="v" id="s-ev">–</div><div class="s" id="s-ev-s">&nbsp;</div></div>
+      <div class="chip" id="wx-chip" role="button" tabindex="0" aria-label="Voir la météo de Valleyfield" style="cursor:pointer"><div class="k">Valleyfield</div><div class="v" id="s-wx">–</div><div class="s" id="s-wx-s">météo…</div></div>
       <div class="chip"><div class="k">Alarme</div><div class="v" id="s-alarm">–</div><div class="s" id="s-alarm-s">&nbsp;</div></div>
     </div>
     <div class="tools">
@@ -417,6 +431,15 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   <div class="acts"><button id="ring-stop" type="button">Arrêter</button><button id="ring-snooze" type="button">Reporter 9 min</button></div>
 </div>
 
+<!-- Météo -->
+<div class="overlay" id="wx" hidden role="dialog" aria-label="Météo">
+  <div class="wx-card">
+    <div class="panel-h"><h2>Salaberry-de-Valleyfield</h2><button class="btn" id="wx-close" type="button">✕ Fermer</button></div>
+    <div id="wx-body"><div class="loading">Chargement…</div></div>
+    <div class="meta" id="wx-meta" style="margin-top:10px">Source: Open-Meteo</div>
+  </div>
+</div>
+
 <!-- Mode nuit -->
 <div class="overlay" id="night" hidden role="dialog" aria-label="Mode nuit">
   <canvas id="stars" aria-hidden="true"></canvas>
@@ -428,6 +451,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     <div class="n-clock" id="n-clock">--:--</div>
     <div class="n-date" id="n-date">&nbsp;</div>
     <div class="n-alarm" id="n-alarm">&nbsp;</div>
+    <div class="n-alarm" id="n-wx" style="min-height:0"></div>
     <div class="n-ctl">
       <div class="snd-grid" id="n-snd"></div>
       <div class="vol-row"><span aria-hidden="true">🔈</span><input type="range" id="n-vol" min="0" max="100" value="50" aria-label="Volume"><span aria-hidden="true">🔊</span></div>
@@ -1560,6 +1584,55 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   }
 
 
+    /* ---------- Météo (Open-Meteo, sans clé) ---------- */
+  var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=45.2578&longitude=-74.1306&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=America%2FToronto&forecast_days=5';
+  function wxInfo(code, day) {
+    if (code === 0) return day === 0 ? ['🌙', 'Ciel dégagé'] : ['☀️', 'Ensoleillé'];
+    if (code === 1) return day === 0 ? ['🌙', 'Plutôt dégagé'] : ['🌤️', 'Plutôt ensoleillé'];
+    if (code === 2) return ['⛅', 'Partiellement nuageux'];
+    if (code === 3) return ['☁️', 'Couvert'];
+    if (code === 45 || code === 48) return ['🌫️', 'Brouillard'];
+    if (code >= 51 && code <= 57) return ['🌦️', 'Bruine'];
+    if (code === 61 || code === 63 || code === 65) return ['🌧️', 'Pluie'];
+    if (code === 66 || code === 67) return ['🌧️', 'Pluie verglaçante'];
+    if (code >= 71 && code <= 77) return ['🌨️', 'Neige'];
+    if (code >= 80 && code <= 82) return ['🌦️', 'Averses'];
+    if (code === 85 || code === 86) return ['🌨️', 'Averses de neige'];
+    if (code >= 95) return ['⛈️', 'Orage'];
+    return ['🌡️', 'Météo'];
+  }
+  var wxData = null;
+  function deg(n) { return Math.round(n) + '°'; }
+  function renderWx() {
+    var d = wxData; if (!d || !d.current || !d.daily) return;
+    var c = d.current, dl = d.daily, inf = wxInfo(c.weather_code, c.is_day);
+    var pm = dl.precipitation_probability_max ? dl.precipitation_probability_max[0] : null;
+    $('s-wx').textContent = inf[0] + ' ' + deg(c.temperature_2m);
+    $('s-wx-s').textContent = '↑' + deg(dl.temperature_2m_max[0]) + ' ↓' + deg(dl.temperature_2m_min[0]) + (pm != null ? ' · 💧' + pm + '%' : '');
+    $('n-wx').textContent = inf[0] + ' ' + deg(c.temperature_2m) + ' · ' + inf[1] + ' · Valleyfield';
+    var html = '<div class="wx-now"><div class="em">' + inf[0] + '</div><div><div class="big">' + deg(c.temperature_2m) + '</div><div class="d">' + esc(inf[1]) + ' · ressenti ' + deg(c.apparent_temperature) + ' · vent ' + Math.round(c.wind_speed_10m) + ' km/h</div></div></div>';
+    html += dl.time.map(function (t, i) {
+      var di = wxInfo(dl.weather_code[i], 1), p = dl.precipitation_probability_max ? dl.precipitation_probability_max[i] : null;
+      var lab = i === 0 ? 'Aujourd\'hui' : i === 1 ? 'Demain' : keyToDate(t).toLocaleDateString(LOC, { weekday: 'long' });
+      return '<div class="wx-day"><span class="t">' + esc(lab) + '</span><span class="e">' + di[0] + '</span><span class="r">' + deg(dl.temperature_2m_min[i]) + ' / ' + deg(dl.temperature_2m_max[i]) + '</span><span class="p">' + (p != null ? '💧 ' + p + '%' : '') + '</span></div>';
+    }).join('');
+    $('wx-body').innerHTML = html;
+    $('wx-meta').textContent = 'Source: Open-Meteo · mis à jour ' + hm(new Date(d.__t || Date.now()));
+  }
+  function loadWx() {
+    try { var c = JSON.parse(lsGet('dash.wx') || 'null'); if (c && c.data && !wxData) { wxData = c.data; wxData.__t = c.t; renderWx(); } } catch (e) {}
+    if (!window.fetch) return;
+    fetch(WX_URL, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('wx ' + r.status); return r.json(); })
+      .then(function (j) { if (!j || !j.current) throw new Error('wx'); wxData = j; wxData.__t = Date.now(); lsSet('dash.wx', JSON.stringify({ t: wxData.__t, data: j })); renderWx(); })
+      .catch(function () { if (!wxData) { $('s-wx').textContent = '–'; $('s-wx-s').textContent = 'indisponible'; $('wx-body').innerHTML = '<div class="empty">Météo indisponible pour le moment (connexion ?).</div>'; } });
+  }
+  function openWx() { $('wx').hidden = false; loadWx(); }
+  $('wx-chip').addEventListener('click', openWx);
+  $('wx-chip').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWx(); } });
+  $('wx-close').addEventListener('click', function () { $('wx').hidden = true; });
+  $('wx').addEventListener('click', function (e) { if (e.target === $('wx')) $('wx').hidden = true; });
+  setInterval(function () { if (!document.hidden) loadWx(); }, 20 * 60000);
+
   /* ---------- Stockage local + synchro (version autonome pour GitHub Pages) ---------- */
   var DBKEY = 'reveil_db', SYNC_API = 'https://jsonblob.com/api/jsonBlob/';
   var PULL_KEYS = ['jarvis_events', 'jarvis_birthdays', 'jarvis_recurring'];
@@ -1665,6 +1738,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   try { var sa = JSON.parse(lsGet('dash.alarm') || 'null'); if (sa && typeof sa.offset === 'number') alarm = { on: sa.on !== false, offset: sa.offset, sound: sa.sound || 'beep', customName: sa.customName || '' }; } catch (e) {}
   syncSoundSelect();
   loadCustom();
+  loadWx();
   renderMonth();
   renderAlarm();
   initDb();
