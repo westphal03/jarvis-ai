@@ -208,6 +208,98 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 .n-dim span { font-size: 18px; }
 .n-bar .tbtn { background: rgba(255,255,255,.04); border-color: #1a2133; color: #7f8cab; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ===== Mode "tout sur un écran" (iPad Air 2: 1024x768 paysage, 768x1024 portrait) ===== */
+@media (min-width: 700px) and (min-height: 560px) {
+  html, body { height: 100%; overflow: hidden; }
+  .wrap { position: fixed; top: 0; left: 0; right: 0; bottom: 0; max-width: none; margin: 0; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .top { margin: 0; gap: 6px 14px; flex: none; flex-wrap: nowrap; }
+  .clk { flex: 0 0 auto; gap: 12px; }
+  .hm { font-size: 52px; }
+  #greet { font-size: 16px; } #date-long { font-size: 13px; }
+  .chips { flex: 1 1 auto; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+  .chip { min-width: 0; max-width: none; flex: 1 1 0; padding: 5px 10px; border-radius: 12px; }
+  .chip .k { font-size: 10px; } .chip .v { font-size: 16px; margin-top: 0; } .chip .s { font-size: 11px; }
+  .tbtn { min-height: 40px; padding: 0 10px; font-size: 13px; border-radius: 12px; }
+  .cols { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; align-items: stretch; }
+  .stack { display: contents; }
+  .panel { padding: 10px 12px; border-radius: 18px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .panel-h { margin-bottom: 6px; min-height: 28px; }
+  .panel-h h2 { font-size: 16px; }
+  .panel-h .meta { font-size: 11px; }
+  #p-pub, #p-mail { display: none; }
+  #p-notes { grid-area: notes; } #p-cal { grid-area: cal; } #p-alarm { grid-area: alarm; } #p-sounds { grid-area: snd; } #p-rout { grid-area: rout; }
+  /* Bloc-notes */
+  .sheet { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 10px 6px; }
+  .line { min-height: 42px; gap: 10px; } .line .ln { font-size: 16px; padding: 8px 0; }
+  .add-line { min-height: 42px; }
+  .chk { width: 26px; height: 26px; }
+  .pad-foot { margin-top: 6px; } #note-hint { font-size: 12px; margin-top: 4px; }
+  .btn { min-height: 36px; padding: 0 10px; font-size: 13px; }
+  /* Alarme */
+  #p-alarm .panel-h { margin-bottom: 0; }
+  .al-time { font-size: 44px; }
+  .al-sub { margin: 2px 0 6px; font-size: 13px; }
+  .al-row { padding: 5px 0; gap: 6px; font-size: 13px; }
+  .stepper button { width: 40px; height: 36px; } .stepper b { min-width: 60px; font-size: 13px; }
+  #al-audio { font-size: 11px; flex: 1 1 140px; line-height: 1.25; }
+  #al-meta, #al-status:empty { display: none; }
+  /* Sons */
+  .snd-grid { gap: 6px; }
+  .snd { min-height: 56px; padding: 5px 2px; font-size: 11px; border-radius: 12px; gap: 2px; }
+  .snd .e { font-size: 21px; }
+  .vol-row { margin-top: 8px; gap: 8px; } .timer { margin-top: 8px; gap: 6px; }
+  .tm { min-height: 32px; padding: 0 9px; font-size: 12px; border-radius: 10px; }
+  #timer-left { font-size: 11px; margin-top: 2px !important; }
+  /* Routine */
+  .rout-top { margin-bottom: 4px; gap: 10px; }
+  .ring { width: 42px; height: 42px; } .ring::before { width: 32px; height: 32px; font-size: 11px; }
+  #rout-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .list li { min-height: 38px; gap: 10px; font-size: 14px; }
+  .add-form { margin-top: 6px; } .add-form input { min-height: 38px; }
+  /* Calendrier */
+  #cal-title { font-size: 17px; }
+  .cal-nav .btn { min-width: 38px; padding: 0 8px; }
+  #month-status:empty { display: none; }
+  .dow { margin-bottom: 4px; gap: 4px; } .dow span { font-size: 10px; }
+  .mgrid { flex: 1 1 auto; min-height: 0; gap: 4px; grid-template-rows: repeat(6, minmax(0, 1fr)); }
+  .cell { min-height: 0; padding: 3px 4px; gap: 1px; border-radius: 10px; }
+  .cell .dn { font-size: 11px; }
+  .evs { overflow: hidden; }
+  .ec { font-size: 10.5px; padding: 0 3px; }
+  .more { font-size: 10px; }
+  #day-detail { flex: none; max-height: 92px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .dayhead { margin: 6px 0 2px; font-size: 14px; }
+  .drow { grid-template-columns: 26px 98px minmax(0, 1fr); padding: 4px 0; font-size: 13px; }
+  .drow .em { font-size: 18px; }
+  #cal-meta { display: none; }
+}
+@media (min-width: 700px) and (min-height: 560px) and (orientation: landscape) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "notes cal alarm" "rout cal snd"; }
+  .ec .et { display: none; }
+  .evs { flex-direction: row; flex-wrap: wrap; }
+  .ec { background: transparent; font-size: 14px; padding: 0; }
+  #day-detail { max-height: 130px; }
+}
+@media (min-width: 700px) and (min-height: 560px) and (orientation: portrait) {
+  .top { flex-wrap: wrap; }
+  .chips { order: 3; flex: 1 0 100%; }
+  .hm { font-size: 46px; }
+  .chip .s { display: none; }
+  .tools { margin-left: auto; }
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1.6fr) minmax(0, 1.05fr);
+    grid-template-areas: "notes alarm" "cal cal" "rout snd"; }
+  .cell { min-height: 0; }
+  .ec .et { display: none; }
+  .evs { flex-direction: row; flex-wrap: wrap; }
+  .ec { background: transparent; font-size: 15px; padding: 0; }
+  .al-time { font-size: 38px; }
+  .snd .e { font-size: 17px; } .snd { min-height: 38px; } .tm { min-height: 30px; }
+  #day-detail { max-height: 58px; }
+  #timer-left { display: none; }
+  .vol-row, .timer { margin-top: 5px; }
+}
 </style>
 </head>
 <body>
@@ -871,7 +963,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   function loadMonth() {
     monthEvents = [];
     renderMonth();
-    if (!mcp) { $('month-status').innerHTML = '<div class="empty">Calendrier lu depuis votre Jarvis (événements, anniversaires, récurrents).</div>'; return; }
+    if (!mcp) { $('month-status').innerHTML = ''; return; }
     var r = gridRange(viewY, viewM), tok = ++loadTok;
     var local = function (dt) { return dayKeyOf(dt) + 'T00:00:00'; };
     $('month-status').innerHTML = '<div class="loading">Chargement du calendrier…</div>';
@@ -1160,7 +1252,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
       return '<button class="snd" type="button" data-snd="' + s.id + '" aria-pressed="false"><span class="e" aria-hidden="true">' + s.emo + '</span><span>' + esc(s.name) + '</span></button>';
     }).join('');
     $('snd-grid').innerHTML = html; $('n-snd').innerHTML = html;
-    var TM = [[0, 'Sans minuterie'], [15, '15 min'], [30, '30 min'], [60, '1 h'], [120, '2 h']];
+    var TM = [[0, 'Aucune'], [15, '15 min'], [30, '30 min'], [60, '1 h'], [120, '2 h']];
     var th = TM.map(function (t) { return '<button class="tm" type="button" data-min="' + t[0] + '" aria-pressed="' + (t[0] === 0) + '">' + t[1] + '</button>'; }).join('');
     $('timer-btns').innerHTML = th; $('n-timer').innerHTML = th;
   }
