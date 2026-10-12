@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="fr">
 <head>
+<meta name="reveil-version" content="2026-10-12-a">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
@@ -1650,6 +1652,21 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   $('wx-close').addEventListener('click', function () { $('wx').hidden = true; });
   $('wx').addEventListener('click', function (e) { if (e.target === $('wx')) $('wx').hidden = true; });
   setInterval(function () { if (!document.hidden) loadWx(); }, 20 * 60000);
+
+  /* ---------- Mise à jour automatique de la page ---------- */
+  (function () {
+    function cur() { var m = document.querySelector('meta[name="reveil-version"]'); return m ? m.content : ''; }
+    function check() {
+      if (!window.fetch || document.hidden || !$('ring').hidden || !$('night').hidden) return;
+      fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+        var m = t.match(/name="reveil-version" content="([^"]+)"/);
+        if (m && m[1] !== cur()) location.reload();
+      }).catch(function () {});
+    }
+    setInterval(check, 5 * 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(check, 1500); });
+    setTimeout(check, 4000);
+  })();
 
 
   /* ---------- Stockage local + synchro (version autonome pour GitHub Pages) ---------- */
