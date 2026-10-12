@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-12-c">
+<meta name="reveil-version" content="2026-10-12-d">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -835,7 +835,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('rout-input').disabled = true;
   }
   function waitClaude() {
-    return new Promise(function (res) { var n = 0; (function t() { if ((window.claude && window.claude.use) || n++ > 20) res(); else setTimeout(t, 150); })(); });
+    return new Promise(function (res) { if (/github\.io$/.test(location.hostname)) return res(); var n = 0; (function t() { if ((window.claude && window.claude.use) || n++ > 20) res(); else setTimeout(t, 150); })(); });
   }
   var HOST = 'local';
   async function initDb() {
@@ -1683,31 +1683,65 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   function syncId() { return lsGet('jarvis_sync_id') || ''; }
   function tsOf(k) { return +lsGet('jarvis_ts_' + k) || 0; }
   var syncBusy = false, syncTimer = null;
-  function scheduleSync() { if (!syncId()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+  var GH_REPO = 'westphal03/jarvis-ai', GH_PATH = 'reveil/data.json', GH_URL = 'https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_PATH;
+  var ALLKEYS = PULL_KEYS.concat([DBKEY]), ghSha = null;
+  function ghToken() { return lsGet('reveil_gh_token') || ''; }
+  function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function b64dec(b) { return decodeURIComponent(escape(atob(String(b).replace(/\s/g, '')))); }
+  function scheduleSync() { if (!syncId() && !ghToken()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+  /* Transport: lit {data, ts} distant, puis écrit si besoin */
+  function remoteRead() {
+    if (ghToken()) {
+      return fetch(GH_URL + '?ref=main&_=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + ghToken(), 'Accept': 'application/vnd.github+json' }, cache: 'no-store' })
+        .then(function (r) {
+          if (r.status === 404) { ghSha = null; return {}; }
+          if (!r.ok) throw new Error('get ' + r.status);
+          return r.json().then(function (j) { ghSha = j.sha; return JSON.parse(b64dec(j.content) || '{}'); });
+        });
+    }
+    return fetch(SYNC_API + syncId(), { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('get ' + r.status); return r.json(); });
+  }
+  function remoteWrite(obj) {
+    if (ghToken()) {
+      var body = { message: 'Réveil: synchro ' + new Date().toISOString(), content: b64enc(JSON.stringify(obj, null, 1)), branch: 'main' };
+      if (ghSha) body.sha = ghSha;
+      return fetch(GH_URL, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + ghToken(), 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { if (!r.ok) throw new Error('put ' + r.status); return r.json(); })
+        .then(function (j) { ghSha = j && j.content ? j.content.sha : null; });
+    }
+    return fetch(SYNC_API + syncId(), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(obj) })
+      .then(function (r) { if (!r.ok) throw new Error('put ' + r.status); });
+  }
   function syncNow() {
-    var id = syncId(); if (!id || syncBusy) return; syncBusy = true;
-    fetch(SYNC_API + id, { headers: { 'Accept': 'application/json' }, cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error('get ' + r.status); return r.json(); })
+    if (HOST === 'claude' || (!syncId() && !ghToken()) || syncBusy) return; syncBusy = true;
+    remoteRead()
       .then(function (remote) {
         remote = remote || {};
         var rd = remote.data || {}, rt = remote.ts || {}, changed = false, push = false;
-        PULL_KEYS.concat([DBKEY]).forEach(function (k) {
-          var lt = tsOf(k), r = +rt[k] || 0;
+        ALLKEYS.forEach(function (k) {
+          var lt = tsOf(k), r = +rt[k] || 0, has = lsGet(k) !== null;
           if ((k in rd) && r > lt) { lsSet(k, JSON.stringify(rd[k])); lsSet('jarvis_ts_' + k, String(r)); changed = true; }
-          else if (k === DBKEY && lsGet(k) !== null && (!(k in rd) || lt > r)) push = true;
+          else if (has && (!(k in rd) || lt > r)) {
+            try { rd[k] = JSON.parse(lsGet(k)); rt[k] = lt || Date.now(); if (!lt) lsSet('jarvis_ts_' + k, String(rt[k])); push = true; } catch (e) {}
+          }
         });
         if (changed) LOCALDB.notify();
-        if (push) {
-          try { rd[DBKEY] = JSON.parse(lsGet(DBKEY)); } catch (e) { return; }
-          rt[DBKEY] = tsOf(DBKEY);
-          return fetch(SYNC_API + id, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ data: rd, ts: rt }) })
-            .then(function (r) { if (!r.ok) throw new Error('put ' + r.status); });
-        }
+        if (push) return remoteWrite({ data: rd, ts: rt });
       })
       .then(function () { $('todo-meta').textContent = 'synchronisé · ' + hm(new Date()); })
-      .catch(function () { if (HOST === 'local') $('todo-meta').textContent = 'hors ligne — enregistré sur cet appareil'; })
+      .catch(function (e) { if (HOST === 'local') $('todo-meta').textContent = (ghToken() ? 'synchro GitHub en erreur (' + (e && e.message) + ')' : 'hors ligne') + ' — enregistré sur cet appareil'; })
       .then(function () { syncBusy = false; });
   }
+  $('todo-meta').style.cursor = 'pointer';
+  $('todo-meta').addEventListener('click', function () {
+    if (HOST === 'claude') return;
+    var cur = ghToken() ? 'une clé est déjà enregistrée (laisser vide = la garder, "-" = l\'effacer)' : 'aucune clé';
+    var v = window.prompt('Synchro GitHub — colle ta clé (' + cur + ')', '');
+    if (v === null) return; v = v.trim();
+    if (v === '-') { lsSet('reveil_gh_token', ''); $('todo-meta').textContent = 'synchro GitHub désactivée'; return; }
+    if (v) { lsSet('reveil_gh_token', v); $('todo-meta').textContent = 'synchronisation…'; ghSha = null; syncNow(); }
+  });
   var LOCALDB = (function () {
     var subs = [];
     function load() { try { return JSON.parse(lsGet(DBKEY) || '{}') || {}; } catch (e) { return {}; } }
@@ -1771,7 +1805,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
       notify: notify
     };
   })();
-  setInterval(syncNow, 60000);
+  setInterval(syncNow, 30000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) syncNow(); });
 
   /* ---------- Initialisation ---------- */
@@ -1787,8 +1821,8 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   renderAlarm();
   initDb();
   initMcp();
-  setTimeout(function () { if (HOST === 'local') $('todo-meta').textContent = syncId() ? 'synchronisation…' : 'enregistré sur cet appareil'; }, 0);
-  syncNow();
+  setTimeout(function () { if (HOST === 'local') $('todo-meta').textContent = (syncId() || ghToken()) ? 'synchronisation…' : 'enregistré sur cet appareil'; }, 0);
+  setTimeout(syncNow, /github\.io$/.test(location.hostname) ? 0 : 3500);
   /* Import unique depuis un petit fichier de données (lien #k=...) */
   (function () {
     var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/); if (!m) return;
