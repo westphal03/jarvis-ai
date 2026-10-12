@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-12-b">
+<meta name="reveil-version" content="2026-10-12-c">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -834,8 +834,14 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('rout-body').innerHTML = '<div class="empty">La routine nécessite la synchronisation.</div>';
     $('rout-input').disabled = true;
   }
+  function waitClaude() {
+    return new Promise(function (res) { var n = 0; (function t() { if ((window.claude && window.claude.use) || n++ > 20) res(); else setTimeout(t, 150); })(); });
+  }
+  var HOST = 'local';
   async function initDb() {
+    await waitClaude();
     try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (db) { HOST = 'claude'; $('todo-meta').textContent = 'synchronisé avec Claude'; }
     if (!db) db = LOCALDB; /* page autonome (iPad): stockage local + synchro */
     if (!db) { offlineDb(); return; }
     db.collection('todos').onSnapshot(function (snap) {
@@ -1571,6 +1577,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     if (mcp) { try { mcp.invalidate(); } catch (e) {} startAll(); loadMonth(); }
   });
   async function initMcp() {
+    await waitClaude();
     try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (e) { mcp = null; }
     if (!mcp) {
       ['pub-body', 'mail-body'].forEach(function (id) {
@@ -1645,7 +1652,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     if (!window.fetch) return;
     fetch(WX_URL, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('wx ' + r.status); return r.json(); })
       .then(function (j) { if (!j || !j.current) throw new Error('wx'); wxData = j; wxData.__t = Date.now(); lsSet('dash.wx', JSON.stringify({ t: wxData.__t, data: j })); renderWx(); })
-      .catch(function () { if (!wxData) { $('s-wx').textContent = '–'; $('s-wx-s').textContent = 'indisponible'; $('wx-body').innerHTML = '<div class="empty">Météo indisponible pour le moment (connexion ?).</div>'; } });
+      .catch(function (e) { if (!wxData) { $('s-wx').textContent = '–'; $('s-wx-s').textContent = 'indisponible'; $('wx-body').innerHTML = '<div class="empty">Météo indisponible ici (' + esc(String(e && e.message || e)) + '). Elle fonctionne dans la page de l\'iPad.</div>'; } });
   }
   function openWx() { $('wx').hidden = false; loadWx(); }
   $('wx-chip').addEventListener('click', openWx);
@@ -1698,7 +1705,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
         }
       })
       .then(function () { $('todo-meta').textContent = 'synchronisé · ' + hm(new Date()); })
-      .catch(function () { $('todo-meta').textContent = 'hors ligne — enregistré sur cet appareil'; })
+      .catch(function () { if (HOST === 'local') $('todo-meta').textContent = 'hors ligne — enregistré sur cet appareil'; })
       .then(function () { syncBusy = false; });
   }
   var LOCALDB = (function () {
@@ -1780,7 +1787,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   renderAlarm();
   initDb();
   initMcp();
-  $('todo-meta').textContent = syncId() ? 'synchronisation…' : 'enregistré sur cet appareil';
+  setTimeout(function () { if (HOST === 'local') $('todo-meta').textContent = syncId() ? 'synchronisation…' : 'enregistré sur cet appareil'; }, 0);
   syncNow();
   /* Import unique depuis un petit fichier de données (lien #k=...) */
   (function () {
