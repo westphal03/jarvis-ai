@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-12-a">
+<meta name="reveil-version" content="2026-10-12-b">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -835,7 +835,8 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('rout-input').disabled = true;
   }
   async function initDb() {
-    db = LOCALDB;
+    try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (!db) db = LOCALDB; /* page autonome (iPad): stockage local + synchro */
     if (!db) { offlineDb(); return; }
     db.collection('todos').onSnapshot(function (snap) {
       todos = snap.docs.map(function (d) { var o = d.data() || {}; o.id = d.id; return o; });
@@ -1570,7 +1571,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     if (mcp) { try { mcp.invalidate(); } catch (e) {} startAll(); loadMonth(); }
   });
   async function initMcp() {
-    mcp = null;
+    try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (e) { mcp = null; }
     if (!mcp) {
       ['pub-body', 'mail-body'].forEach(function (id) {
         $(id).innerHTML = '<div class="empty">Les connecteurs ne sont pas disponibles dans cet affichage. Ouvrez la page depuis claude.ai.</div>';
@@ -1784,7 +1785,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   /* Import unique depuis un petit fichier de données (lien #k=...) */
   (function () {
     var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/); if (!m) return;
-    fetch('d-' + m[1] + '.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); }).then(function (p) {
+    fetch((/github\.io$/.test(location.hostname) ? '' : 'https://westphal03.github.io/jarvis-ai/reveil/') + 'd-' + m[1] + '.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); }).then(function (p) {
       Object.keys(p).forEach(function (k) {
         var cur = null; try { cur = JSON.parse(lsGet(k)); } catch (e) {}
         var v = p[k];
