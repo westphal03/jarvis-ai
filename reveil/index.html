@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-13-b">
+<meta name="reveil-version" content="2026-10-13-c">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1488,10 +1488,9 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
       loop(T, function () { gust(T, out, 2400, 4200, 0.6, 0.05, 3 + Math.random() * 3, rp(), 'white', 0.1); }, 1800, 5200);
       loop(T, function () { bird(T, out); }, 1300, 5200);
     } },
-    { id: 'waves', lvl: 1.7, name: 'Vagues', emo: '🌊', build: function (T, out) {
-      var base = gn(T, 0.12); lfo(T, 0.05, 0.05, base.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 380), base], out);
-      wave(T, out);
-      loop(T, function () { wave(T, out); }, 4800, 8200);
+    { id: 'waves', name: 'Vagues', emo: '🌊', build: function (T, out) {
+      var g = gn(T, 0.45); lfo(T, 0.09, 0.35, g.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 1000), g], out);
+      var f = gn(T, 0.1); lfo(T, 0.09, 0.09, f.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 2600, 0.5), f], out);
     } },
     { id: 'wind', lvl: 1.8, name: 'Vent', emo: '🍃', build: function (T, out) {
       var b = gn(T, 0.16); lfo(T, 0.04, 0.06, b.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 420), b], out);
