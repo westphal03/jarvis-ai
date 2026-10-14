@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Télécharger et préparer les vagues (BigSoundBank, CC0)
+      - name: Télécharger et préparer les vagues (BigSoundBank, CC0 — Small waves, rocks and beach)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
           mkdir -p reveil/sounds /tmp/dl
-          curl -fsSL -A "Mozilla/5.0" -o /tmp/dl/waves.mp3 "https://bigsoundbank.com/UPLOAD/mp3/0698.mp3?v=d"
+          curl -fsSL -A "Mozilla/5.0" -o /tmp/dl/waves.mp3 "https://bigsoundbank.com/UPLOAD/mp3/1445.mp3?v=d"
           ls -la /tmp/dl
-          ffmpeg -y -loglevel error -ss 2 -t 150 -i /tmp/dl/waves.mp3 -ac 1 -ar 44100 -b:a 96k reveil/sounds/vagues.mp3
+          ffmpeg -y -loglevel error -ss 5 -t 170 -i /tmp/dl/waves.mp3 -ac 1 -ar 44100 -b:a 96k reveil/sounds/vagues.mp3
           ls -la reveil/sounds
-          printf '%s\n' "vagues.mp3 — « Sea Waves » (S0698), BigSoundBank / Joseph Sardin, licence CC0 (domaine public). https://bigsoundbank.com/sound-0698-mer-vagues.html" > reveil/sounds/CREDITS.txt
+          printf '%s\n' "vagues.mp3 — « Small waves, rocks and beach » (S1445), BigSoundBank / Joseph Sardin, licence CC0 (domaine public). https://bigsoundbank.com/sound-1445-petites-vagues-rochers-et-plage.html" > reveil/sounds/CREDITS.txt
       - name: Enregistrer dans le dépôt
         run: |
           git config user.name "github-actions"
