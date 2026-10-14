@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-13-a">
+<meta name="reveil-version" content="2026-10-13-b">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1373,60 +1373,144 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     (function go() { if (T.stopped) return; fn(); h.t = setTimeout(go, a + Math.random() * (b - a)); })();
   }
   function chain(src, arr, out) { var p = src; arr.forEach(function (n) { p.connect(n); p = n; }); p.connect(out); }
-  function chirp(out) {
-    var c = AC, t = c.currentTime, n = 2 + Math.floor(Math.random() * 4), base = 2300 + Math.random() * 1900;
-    for (var i = 0; i < n; i++) {
-      var t0 = t + i * 0.15, o = c.createOscillator(), g = c.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(base + Math.random() * 150, t0);
-      o.frequency.exponentialRampToValueAtTime(base * (1.15 + Math.random() * 0.4), t0 + 0.09);
-      g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.07, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-      o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + 0.14);
+  /* --- Briques sonores réalistes: bruits stéréo, événements aléatoires, petite réverbération --- */
+  var REV = null;
+  function rev() {
+    if (REV && REV.ctx === AC) return REV.node;
+    var len = Math.floor(AC.sampleRate * 2.4), b = AC.createBuffer(2, len, AC.sampleRate), ch, i;
+    for (ch = 0; ch < 2; ch++) { var d = b.getChannelData(ch); for (i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8); }
+    var c = AC.createConvolver(); c.buffer = b; var g = AC.createGain(); g.gain.value = 0.55; c.connect(g); g.connect(master);
+    REV = { ctx: AC, node: c }; return c;
+  }
+  function rsrc(dur, t0, type) { var s = AC.createBufferSource(); s.buffer = noiseBuf(type || 'white'); s.start(t0, Math.random() * 3.5); s.stop(t0 + dur + 0.05); return s; }
+  function bq(type, f, q) { var n = AC.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q != null) n.Q.value = q; return n; }
+  function evOut(T, out, p, rv) {
+    var g = AC.createGain(), tail = g;
+    if (p != null && AC.createStereoPanner) { var pn = AC.createStereoPanner(); pn.pan.value = p; g.connect(pn); tail = pn; }
+    tail.connect(out);
+    if (rv) { var s = AC.createGain(); s.gain.value = rv; tail.connect(s); s.connect(T.rv); }
+    return g;
+  }
+  function rp() { return Math.random() * 1.6 - 0.8; }
+  function burst(T, out, f, q, dur, v, p, rv, type) {
+    var t = AC.currentTime, s = rsrc(dur, t, type), b = bq('bandpass', f, q), e = AC.createGain();
+    e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(v, t + Math.min(0.004, dur / 3)); e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(b); b.connect(e); e.connect(evOut(T, out, p, rv));
+  }
+  function note(T, out, t0, f0, f1, dur, v, p, rv) {
+    var o = AC.createOscillator(), o2 = AC.createOscillator(), e = AC.createGain(), h = AC.createGain();
+    o.type = 'sine'; o2.type = 'sine';
+    o.frequency.setValueAtTime(f0, t0); o.frequency.linearRampToValueAtTime(f1, t0 + dur);
+    o2.frequency.setValueAtTime(f0 * 2, t0); o2.frequency.linearRampToValueAtTime(f1 * 2, t0 + dur);
+    h.gain.value = 0.14;
+    e.gain.setValueAtTime(0.0001, t0); e.gain.linearRampToValueAtTime(v, t0 + Math.min(0.025, dur * 0.3)); e.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(e); o2.connect(h); h.connect(e); e.connect(evOut(T, out, p, rv));
+    o.start(t0); o2.start(t0); o.stop(t0 + dur + 0.05); o2.stop(t0 + dur + 0.05);
+  }
+  function gust(T, out, fa, fb, q, peak, dur, p, type, rv) {
+    var t = AC.currentTime, s = rsrc(dur, t, type || 'pink'), b = bq('bandpass', fa, q), e = AC.createGain();
+    b.frequency.setValueAtTime(fa, t); b.frequency.exponentialRampToValueAtTime(fb, t + dur * 0.5); b.frequency.exponentialRampToValueAtTime(fa * 1.1, t + dur);
+    e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(peak, t + dur * 0.45); e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(b); b.connect(e); e.connect(evOut(T, out, p, rv));
+  }
+  function wave(T, out) {
+    var t = AC.currentTime, rise = 3 + Math.random() * 2.2, fall = 5 + Math.random() * 3, tot = rise + fall, p = rp() * 0.7, big = 0.7 + Math.random() * 0.5;
+    var body = rsrc(tot, t, 'pink'), lp = bq('lowpass', 220), e = AC.createGain();
+    lp.frequency.setValueAtTime(220, t); lp.frequency.exponentialRampToValueAtTime(1500 * big + 500, t + rise); lp.frequency.exponentialRampToValueAtTime(260, t + tot);
+    e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(0.55 * big, t + rise); e.gain.exponentialRampToValueAtTime(0.0001, t + tot);
+    body.connect(lp); lp.connect(e); e.connect(evOut(T, out, p, 0.12));
+    /* écume qui pétille après la crête */
+    var fs = rsrc(fall + 0.5, t + rise * 0.8, 'white'), hp = bq('highpass', 3200), fe = AC.createGain(), n = 48, cur = new Float32Array(n), i;
+    for (i = 0; i < n; i++) { var k = i / (n - 1); cur[i] = Math.pow(1 - k, 1.6) * (0.35 + 0.65 * Math.random()) * 0.11 * big; }
+    fe.gain.setValueAtTime(0.0001, t); fe.gain.setValueAtTime(0.0001, t + rise * 0.8);
+    try { fe.gain.setValueCurveAtTime(cur, t + rise * 0.8, fall); } catch (er) {}
+    fs.connect(hp); hp.connect(fe); fe.connect(evOut(T, out, p, 0.2));
+  }
+  function cricket(T, out, f, p) {
+    var t0 = AC.currentTime, n = 3 + Math.floor(Math.random() * 2), i;
+    for (i = 0; i < n; i++) {
+      var t = t0 + i * 0.034, o = AC.createOscillator(), e = AC.createGain();
+      o.type = 'sine'; o.frequency.value = f + Math.random() * 40;
+      e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(0.03, t + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.026);
+      o.connect(e); e.connect(evOut(T, out, p, 0.15)); o.start(t); o.stop(t + 0.04);
     }
   }
-  function drop(out) {
-    var c = AC, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
-    o.type = 'sine'; o.frequency.setValueAtTime(1200 + Math.random() * 2200, t);
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.03, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.05);
+  function treeTrill(T, out) {
+    var t = AC.currentTime, dur = 3 + Math.random() * 3, o = AC.createOscillator(), am = AC.createOscillator(), amg = AC.createGain(), e = AC.createGain(), base = AC.createGain();
+    o.type = 'sine'; o.frequency.value = 3300 + Math.random() * 500; am.type = 'sine'; am.frequency.value = 36 + Math.random() * 8;
+    amg.gain.value = 0.5; base.gain.value = 0.5; am.connect(amg); amg.connect(base.gain);
+    e.gain.setValueAtTime(0.0001, t); e.gain.linearRampToValueAtTime(0.014, t + dur * 0.3); e.gain.linearRampToValueAtTime(0.014, t + dur * 0.7); e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(base); base.connect(e); e.connect(evOut(T, out, rp(), 0.25));
+    o.start(t); am.start(t); o.stop(t + dur + 0.1); am.stop(t + dur + 0.1);
+  }
+  function bird(T, out) {
+    var t = AC.currentTime + 0.02, p = rp(), r = Math.random(), i, f;
+    if (r < 0.34) { /* sifflement à 2-3 notes */
+      f = 2600 + Math.random() * 1300; var nn = 2 + Math.floor(Math.random() * 2), tt = t;
+      for (i = 0; i < nn; i++) { var up = Math.random() < 0.5; note(T, out, tt, f * (up ? 0.9 : 1.08), f * (up ? 1.12 : 0.92), 0.16 + Math.random() * 0.1, 0.05, p, 0.45); tt += 0.22 + Math.random() * 0.08; f *= 1 + (Math.random() - 0.5) * 0.12; }
+    } else if (r < 0.64) { /* trille descendante */
+      f = 4600 + Math.random() * 800; var cnt = 8 + Math.floor(Math.random() * 7);
+      for (i = 0; i < cnt; i++) note(T, out, t + i * 0.055, f - i * 55, f - i * 55 - 260, 0.04, 0.035, p, 0.4);
+    } else if (r < 0.88) { /* "fi-bi" de mésange */
+      f = 3500 + Math.random() * 400;
+      note(T, out, t, f, f * 1.02, 0.34, 0.05, p, 0.5); note(T, out, t + 0.45, f * 0.82, f * 0.8, 0.4, 0.05, p, 0.5);
+    } else { /* roucoulement grave */
+      f = 520 + Math.random() * 80;
+      note(T, out, t, f, f * 0.93, 0.28, 0.055, p, 0.6); note(T, out, t + 0.42, f * 0.96, f * 0.88, 0.34, 0.055, p, 0.6);
+    }
+  }
+  function stereoNoise(T, out, type, arr, v) {
+    [-0.7, 0.7].forEach(function (pp) {
+      var g = gn(T, v), src = nz(T, type), tail = g;
+      if (AC.createStereoPanner) { var pn = AC.createStereoPanner(); pn.pan.value = pp; T.nodes.push(pn); g.connect(pn); tail = pn; }
+      chain(src, arr.map(function (a) { var f = flt(T, a[0], a[1], a[2]); return f; }), g); tail.connect(out);
+    });
   }
   var SOUNDS = [
-    { id: 'gray', name: 'Bruit gris', emo: '🌫️', build: function (T, out) {
-      var g = gn(T, 0.55);
-      chain(nz(T, 'white'), [(function () { var f = flt(T, 'lowshelf', 250); f.gain.value = 9; return f; })(), (function () { var f = flt(T, 'peaking', 3200, 0.7); f.gain.value = -9; return f; })(), (function () { var f = flt(T, 'highshelf', 7000); f.gain.value = 7; return f; })(), flt(T, 'lowpass', 12000), g], out);
+    { id: 'fire', lvl: 1.5, name: 'Feu de camp', emo: '🔥', build: function (T, out) {
+      var roar = gn(T, 0.3); lfo(T, 0.17, 0.08, roar.gain); chain(nz(T, 'brown'), [flt(T, 'lowpass', 380), roar], out);
+      chain(nz(T, 'pink'), [flt(T, 'bandpass', 900, 0.6), gn(T, 0.05)], out);
+      loop(T, function () {
+        var big = Math.random() < 0.1;
+        burst(T, out, big ? 700 + Math.random() * 500 : 1800 + Math.random() * 4200, big ? 0.7 : 1.4, big ? 0.03 : 0.004 + Math.random() * 0.01, big ? 0.5 : 0.12 + Math.random() * 0.25, rp(), 0.12);
+      }, 35, 230);
     } },
     { id: 'brown', name: 'Bruit brun', emo: '🟤', build: function (T, out) { chain(nz(T, 'brown'), [gn(T, 0.9)], out); } },
-    { id: 'rain', name: 'Pluie', emo: '🌧️', build: function (T, out) {
-      chain(nz(T, 'pink'), [flt(T, 'highpass', 600), flt(T, 'lowpass', 9000), gn(T, 0.75)], out);
-      var g2 = gn(T, 0.1); lfo(T, 0.3, 0.04, g2.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 4200, 0.6), g2], out);
-      loop(T, function () { drop(out); }, 90, 420);
+    { id: 'rain', lvl: 1.8, name: 'Pluie', emo: '🌧️', build: function (T, out) {
+      stereoNoise(T, out, 'pink', [['highpass', 380], ['lowpass', 7500]], 0.42);
+      chain(nz(T, 'white'), [flt(T, 'highpass', 5500), gn(T, 0.022)], out);
+      chain(nz(T, 'brown'), [flt(T, 'lowpass', 160), gn(T, 0.12)], out);
+      loop(T, function () { burst(T, out, 1500 + Math.random() * 5500, 2 + Math.random() * 3, 0.012 + Math.random() * 0.03, 0.04 + Math.random() * 0.09, rp(), 0.22); }, 25, 85);
+      loop(T, function () { var t = AC.currentTime, f = 900 + Math.random() * 900; note(T, out, t, f, f * 1.7, 0.05, 0.012, rp(), 0.4); }, 500, 1900);
     } },
-    { id: 'forest', name: 'Forêt', emo: '🌲', build: function (T, out) {
-      var w = gn(T, 0.3); lfo(T, 0.07, 0.12, w.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 650), w], out);
-      var l = gn(T, 0.05); lfo(T, 0.2, 0.03, l.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 3000, 0.4), l], out);
-      loop(T, function () { chirp(out); }, 1600, 6500);
+    { id: 'forest', lvl: 1.6, name: 'Forêt', emo: '🌲', build: function (T, out) {
+      var w = gn(T, 0.2); lfo(T, 0.06, 0.07, w.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 520), w], out);
+      loop(T, function () { gust(T, out, 2400, 4200, 0.6, 0.05, 3 + Math.random() * 3, rp(), 'white', 0.1); }, 1800, 5200);
+      loop(T, function () { bird(T, out); }, 1300, 5200);
     } },
-    { id: 'waves', name: 'Vagues', emo: '🌊', build: function (T, out) {
-      var g = gn(T, 0.45); lfo(T, 0.09, 0.35, g.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 1000), g], out);
-      var f = gn(T, 0.1); lfo(T, 0.09, 0.09, f.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 2600, 0.5), f], out);
+    { id: 'waves', lvl: 1.7, name: 'Vagues', emo: '🌊', build: function (T, out) {
+      var base = gn(T, 0.12); lfo(T, 0.05, 0.05, base.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 380), base], out);
+      wave(T, out);
+      loop(T, function () { wave(T, out); }, 4800, 8200);
     } },
-    { id: 'wind', name: 'Vent', emo: '🍃', build: function (T, out) {
-      var bp = flt(T, 'bandpass', 500, 0.8); lfo(T, 0.12, 260, bp.frequency);
-      var g = gn(T, 0.6); lfo(T, 0.05, 0.25, g.gain); chain(nz(T, 'pink'), [bp, g], out);
+    { id: 'wind', lvl: 1.8, name: 'Vent', emo: '🍃', build: function (T, out) {
+      var b = gn(T, 0.16); lfo(T, 0.04, 0.06, b.gain); chain(nz(T, 'pink'), [flt(T, 'lowpass', 420), b], out);
+      gust(T, out, 260, 620, 1.2, 0.4, 5, rp() * 0.5, 'pink', 0.05);
+      loop(T, function () { gust(T, out, 220 + Math.random() * 200, 600 + Math.random() * 500, 1 + Math.random(), 0.3 + Math.random() * 0.25, 3.5 + Math.random() * 4, rp(), 'pink', 0.06); }, 1800, 5000);
+      loop(T, function () { gust(T, out, 900 + Math.random() * 500, 1300 + Math.random() * 600, 9, 0.05, 2.5 + Math.random() * 2, rp(), 'white', 0.2); }, 6000, 15000);
     } },
-    { id: 'stream', name: 'Ruisseau', emo: '🏞️', build: function (T, out) {
-      chain(nz(T, 'pink'), [flt(T, 'bandpass', 1300, 1), gn(T, 0.5)], out);
-      var f = gn(T, 0.1); lfo(T, 7, 0.07, f.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 3600, 2), f], out);
-      chain(nz(T, 'brown'), [flt(T, 'lowpass', 400), gn(T, 0.3)], out);
+    { id: 'stream', lvl: 1.6, name: 'Ruisseau', emo: '🏞️', build: function (T, out) {
+      stereoNoise(T, out, 'pink', [['bandpass', 950, 0.7]], 0.3);
+      var g2 = gn(T, 0.1); lfo(T, 0.3, 0.05, g2.gain); chain(nz(T, 'white'), [flt(T, 'bandpass', 2300, 1), g2], out);
+      chain(nz(T, 'brown'), [flt(T, 'lowpass', 260), gn(T, 0.22)], out);
+      loop(T, function () { var t = AC.currentTime, f = 450 + Math.random() * 1700; note(T, out, t, f, f * (1.5 + Math.random() * 0.8), 0.03 + Math.random() * 0.04, 0.02 + Math.random() * 0.03, rp(), 0.3); }, 18, 70);
     } },
-    { id: 'crickets', name: 'Grillons', emo: '🌙', build: function (T, out) {
-      [[4200, 27, 0.8], [4650, 31, 1.15]].forEach(function (p) {
-        var o = AC.createOscillator(); o.type = 'sine'; o.frequency.value = p[0]; o.start(); T.nodes.push(o);
-        var a = gn(T, 0.5), b = gn(T, 0.5), v = gn(T, 0.045);
-        lfo(T, p[1], 0.5, a.gain, 'square'); lfo(T, p[2], 0.5, b.gain);
-        o.connect(a); a.connect(b); b.connect(v); v.connect(out);
+    { id: 'crickets', lvl: 2.0, name: 'Grillons', emo: '🌙', build: function (T, out) {
+      chain(nz(T, 'pink'), [flt(T, 'lowpass', 320), gn(T, 0.05)], out);
+      [[4300, -0.7, 430, 700], [4700, 0.6, 360, 620], [4950, -0.2, 520, 880], [4500, 0.85, 600, 950]].forEach(function (c) {
+        loop(T, function () { cricket(T, out, c[0], c[1]); }, c[2], c[3]);
       });
-      chain(nz(T, 'pink'), [flt(T, 'lowpass', 500), gn(T, 0.05)], out);
+      loop(T, function () { treeTrill(T, out); }, 5000, 12000);
     } }
   ];
   function startSnd(id) {
@@ -1434,18 +1518,19 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     var def = SOUNDS.filter(function (s) { return s.id === id; })[0]; if (!def) return;
     var out = c.createGain(); out.gain.value = 0.0001; out.connect(master);
     var T = { nodes: [], loops: [], out: out, stopped: false };
+    T.rv = c.createGain(); T.rv.gain.value = 0.0001; try { T.rv.connect(rev()); } catch (e) {}
     try { def.build(T, out); } catch (e) { return; }
-    out.gain.setTargetAtTime(1, c.currentTime, 0.7);
+    var lv = def.lvl || 1; out.gain.setTargetAtTime(lv, c.currentTime, 0.7); T.rv.gain.setTargetAtTime(lv, c.currentTime, 0.7);
     active[id] = T;
   }
   function stopSnd(id) {
     var T = active[id]; if (!T) return;
     delete active[id]; T.stopped = true;
     T.loops.forEach(function (h) { clearTimeout(h.t); });
-    T.out.gain.setTargetAtTime(0, AC.currentTime, 0.4);
+    T.out.gain.setTargetAtTime(0, AC.currentTime, 0.4); try { T.rv.gain.setTargetAtTime(0, AC.currentTime, 0.4); } catch (e) {}
     setTimeout(function () {
       T.nodes.forEach(function (n) { try { if (n.stop) n.stop(); n.disconnect(); } catch (e) {} });
-      try { T.out.disconnect(); } catch (e) {}
+      try { T.out.disconnect(); T.rv.disconnect(); } catch (e) {}
     }, 2500);
   }
   function stopAll() { Object.keys(active).forEach(stopSnd); }
@@ -1831,7 +1916,10 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   setTimeout(syncNow, /github\.io$/.test(location.hostname) ? 0 : 3500);
   /* Import unique depuis un petit fichier de données (lien #k=...) */
   (function () {
-    var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/); if (!m) return;
+    var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/);
+    /* Première ouverture (ex.: app installée sur l'écran d'accueil, mémoire vide): on charge une fois les données de départ */
+    if (!m && /github\.io$/.test(location.hostname) && lsGet('reveil_seeded') === null && lsGet(DBKEY) === null && lsGet('jarvis_events') === null && !ghToken()) { m = [null, '505b80521e7d']; lsSet('reveil_seeded', '1'); }
+    if (!m) return;
     fetch((/github\.io$/.test(location.hostname) ? '' : 'https://westphal03.github.io/jarvis-ai/reveil/') + 'd-' + m[1] + '.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); }).then(function (p) {
       Object.keys(p).forEach(function (k) {
         var cur = null; try { cur = JSON.parse(lsGet(k)); } catch (e) {}
