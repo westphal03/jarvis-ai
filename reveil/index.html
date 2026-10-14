@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-13-d">
+<meta name="reveil-version" content="2026-10-14-a">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1468,7 +1468,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   }
   /* Enregistrement réel des vagues: chargé une fois, puis bouclé sans coupure (fondu enchaîné de 3 s entre la fin et le début) */
   var WV = null;
-  var WAVES_URL = (/github\.io$/.test(location.hostname) || location.protocol === 'file:' || location.protocol === 'http:') ? 'sounds/vagues.mp3' : 'https://westphal03.github.io/jarvis-ai/reveil/sounds/vagues.mp3';
+  var WAVES_URL = (/github\.io$/.test(location.hostname) || location.protocol === 'file:' || location.protocol === 'http:') ? 'sounds/vagues.mp3?v=2' : 'https://westphal03.github.io/jarvis-ai/reveil/sounds/vagues.mp3?v=2';
   function loadWaves() {
     if (WV && WV.ctx === AC) return WV.p;
     var p = fetch(WAVES_URL).then(function (r) { if (!r.ok) throw new Error('mp3 ' + r.status); return r.arrayBuffer(); })
