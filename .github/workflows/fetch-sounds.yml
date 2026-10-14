@@ -1,0 +1,28 @@
+name: Récupérer les sons libres de droits
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fetch-sounds.yml'
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Télécharger et préparer les vagues (BigSoundBank, CC0)
+        run: |
+          mkdir -p reveil/sounds /tmp/dl
+          curl -fsSL -A "Mozilla/5.0" -o /tmp/dl/waves.mp3 "https://bigsoundbank.com/UPLOAD/mp3/0698.mp3?v=d"
+          ls -la /tmp/dl
+          ffmpeg -y -loglevel error -ss 2 -t 150 -i /tmp/dl/waves.mp3 -ac 1 -ar 44100 -b:a 96k reveil/sounds/vagues.mp3
+          ls -la reveil/sounds
+          printf '%s\n' "vagues.mp3 — « Sea Waves » (S0698), BigSoundBank / Joseph Sardin, licence CC0 (domaine public). https://bigsoundbank.com/sound-0698-mer-vagues.html" > reveil/sounds/CREDITS.txt
+      - name: Enregistrer dans le dépôt
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add reveil/sounds
+          git commit -m "Sons: vagues réelles (CC0)" || echo "rien à commiter"
+          git push
