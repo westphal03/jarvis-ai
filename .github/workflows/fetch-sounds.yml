@@ -13,6 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Télécharger et préparer les vagues (BigSoundBank, CC0)
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
           mkdir -p reveil/sounds /tmp/dl
           curl -fsSL -A "Mozilla/5.0" -o /tmp/dl/waves.mp3 "https://bigsoundbank.com/UPLOAD/mp3/0698.mp3?v=d"
           ls -la /tmp/dl
