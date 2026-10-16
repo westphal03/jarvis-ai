@@ -290,26 +290,26 @@
    ],
    "2026-10-21": [
     {
+     "text": "Travail",
+     "time": "07:30–15:30",
+     "type": "event"
+    },
+    {
      "text": "Collecte des matières recyclables",
      "time": "",
      "type": "reminder"
-    },
-    {
-     "text": "Travail",
-     "time": "07:30",
-     "type": "event"
     }
    ],
    "2026-10-22": [
     {
+     "text": "Travail",
+     "time": "07:30–15:30",
+     "type": "event"
+    },
+    {
      "text": "Collecte des déchets",
      "time": "",
      "type": "reminder"
-    },
-    {
-     "text": "Travail",
-     "time": "07:30",
-     "type": "event"
     }
    ],
    "2026-11-04": [
@@ -413,21 +413,21 @@
    "2026-10-19": [
     {
      "text": "Travail",
-     "time": "07:30",
+     "time": "07:30–15:30",
      "type": "event"
     }
    ],
    "2026-10-20": [
     {
      "text": "Travail",
-     "time": "07:30",
+     "time": "07:30–15:30",
      "type": "event"
     }
    ],
    "2026-10-23": [
     {
      "text": "Travail",
-     "time": "07:30",
+     "time": "07:30–15:30",
      "type": "event"
     }
    ]
@@ -516,7 +516,7 @@
   }
  },
  "ts": {
-  "jarvis_events": 1792186263357,
+  "jarvis_events": 1792186322936,
   "jarvis_birthdays": 1792186263357,
   "jarvis_recurring": 1792186263357,
   "reveil_db": 1792186263357
