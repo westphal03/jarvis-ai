@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-14-a">
+<meta name="reveil-version" content="2026-10-16-a">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -841,7 +841,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('rout-input').disabled = true;
   }
   function waitClaude() {
-    return new Promise(function (res) { if (/github\.io$/.test(location.hostname)) return res(); var n = 0; (function t() { if ((window.claude && window.claude.use) || n++ > 20) res(); else setTimeout(t, 150); })(); });
+    return new Promise(function (res) { if (/github\.io$|^localhost$/.test(location.hostname)) return res(); var n = 0; (function t() { if ((window.claude && window.claude.use) || n++ > 20) res(); else setTimeout(t, 150); })(); });
   }
   var HOST = 'local';
   async function initDb() {
@@ -1805,7 +1805,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   function ghToken() { return lsGet('reveil_gh_token') || ''; }
   function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
   function b64dec(b) { return decodeURIComponent(escape(atob(String(b).replace(/\s/g, '')))); }
-  function scheduleSync() { if (!syncId() && !ghToken()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+  function scheduleSync() { if (!canWrite()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
   /* Transport: lit {data, ts} distant, puis écrit si besoin */
   function remoteRead() {
     if (ghToken()) {
@@ -1830,23 +1830,59 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     return fetch(SYNC_API + syncId(), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(obj) })
       .then(function (r) { if (!r.ok) throw new Error('put ' + r.status); });
   }
+  /* Fusion document par document: le plus récent gagne; une suppression gagne contre une version plus ancienne.
+     Rien ne disparaît quand deux appareils modifient en même temps. */
+  function canon(x) {
+    if (Array.isArray(x)) return '[' + x.map(canon).join(',') + ']';
+    if (x && typeof x === 'object') return '{' + Object.keys(x).sort().map(function (k) { return JSON.stringify(k) + ':' + canon(x[k]); }).join(',') + '}';
+    return JSON.stringify(x === undefined ? null : x);
+  }
+  function mergeDb(L, R) {
+    L = L || {}; R = R || {};
+    var lt = L._t || {}, rt = R._t || {}, ld = L._d || {}, rd = R._d || {}, out = { _t: {}, _d: {} }, keys = {};
+    [L, R].forEach(function (o) { Object.keys(o).forEach(function (c) { if (c === '_t' || c === '_d') return; Object.keys(o[c] || {}).forEach(function (id) { keys[c + '/' + id] = [c, id]; }); }); });
+    Object.keys(ld).concat(Object.keys(rd)).forEach(function (k) { var p = k.split('/'); keys[k] = keys[k] || [p[0], p.slice(1).join('/')]; });
+    Object.keys(keys).forEach(function (k) {
+      var c = keys[k][0], id = keys[k][1];
+      var lHas = !!(L[c] && Object.prototype.hasOwnProperty.call(L[c], id)), rHas = !!(R[c] && Object.prototype.hasOwnProperty.call(R[c], id));
+      var lts = lt[k] || 0, rts = rt[k] || 0, dts = Math.max(ld[k] || 0, rd[k] || 0), val, ts = 0, has = false;
+      if (lHas && rHas) { if (rts > lts) { val = R[c][id]; ts = rts; } else { val = L[c][id]; ts = lts; } has = true; }
+      else if (lHas) { val = L[c][id]; ts = lts; has = true; }
+      else if (rHas) { val = R[c][id]; ts = rts; has = true; }
+      if (has && !(dts && dts >= ts)) { out[c] = out[c] || {}; out[c][id] = val; if (ts) out._t[k] = ts; }
+      else if (dts) out._d[k] = dts;
+    });
+    if (!Object.keys(out._t).length) delete out._t;
+    if (!Object.keys(out._d).length) delete out._d;
+    return out;
+  }
+  function canWrite() { return !!(ghToken() || syncId()); }
   function syncNow() {
-    if (HOST === 'claude' || (!syncId() && !ghToken()) || syncBusy) return; syncBusy = true;
-    remoteRead()
+    var onSite = /github\.io$|^localhost$/.test(location.hostname);
+    if (HOST === 'claude' || syncBusy || (!onSite && !canWrite())) return; syncBusy = true;
+    var write = canWrite();
+    (write ? remoteRead() : fetch('data.json?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (r.status === 404) return {}; if (!r.ok) throw new Error('get ' + r.status); return r.json(); }))
       .then(function (remote) {
         remote = remote || {};
         var rd = remote.data || {}, rt = remote.ts || {}, changed = false, push = false;
-        ALLKEYS.forEach(function (k) {
+        PULL_KEYS.forEach(function (k) {
           var lt = tsOf(k), r = +rt[k] || 0, has = lsGet(k) !== null;
           if ((k in rd) && r > lt) { lsSet(k, JSON.stringify(rd[k])); lsSet('jarvis_ts_' + k, String(r)); changed = true; }
-          else if (has && (!(k in rd) || lt > r)) {
+          else if (write && has && (!(k in rd) || lt > r)) {
             try { rd[k] = JSON.parse(lsGet(k)); rt[k] = lt || Date.now(); if (!lt) lsSet('jarvis_ts_' + k, String(rt[k])); push = true; } catch (e) {}
           }
         });
+        var L = null; try { L = JSON.parse(lsGet(DBKEY) || 'null'); } catch (e) {}
+        var R = rd[DBKEY] || null;
+        if (L || R) {
+          var M = mergeDb(L, R);
+          if (canon(M) !== canon(L || {})) { lsSet(DBKEY, JSON.stringify(M)); lsSet('jarvis_ts_' + DBKEY, String(Date.now())); changed = true; }
+          if (write && canon(M) !== canon(R || {})) { rd[DBKEY] = M; rt[DBKEY] = Date.now(); push = true; }
+        }
         if (changed) LOCALDB.notify();
         if (push) return remoteWrite({ data: rd, ts: rt });
       })
-      .then(function () { $('todo-meta').textContent = 'synchronisé · ' + hm(new Date()); })
+      .then(function () { $('todo-meta').textContent = (write ? 'synchronisé · ' : 'à jour (lecture seule) · ') + hm(new Date()); })
       .catch(function (e) { if (HOST === 'local') $('todo-meta').textContent = (ghToken() ? 'synchro GitHub en erreur (' + (e && e.message) + ')' : 'hors ligne') + ' — enregistré sur cet appareil'; })
       .then(function () { syncBusy = false; });
   }
@@ -1888,9 +1924,9 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     function notify() { subs.slice().forEach(emit); }
     function write(col, id, fn) {
       if (virtual(col)) return Promise.resolve();
-      var o = load(); o[col] = o[col] || {};
-      var nv = fn(o[col][id]);
-      if (nv === null) delete o[col][id]; else o[col][id] = nv;
+      var o = load(); o[col] = o[col] || {}; o._t = o._t || {}; o._d = o._d || {};
+      var nv = fn(o[col][id]), k = col + '/' + id, now = Date.now();
+      if (nv === null) { delete o[col][id]; delete o._t[k]; o._d[k] = now; } else { o[col][id] = nv; o._t[k] = now; delete o._d[k]; }
       save(o); notify(); return Promise.resolve();
     }
     function sub(s) { subs.push(s); setTimeout(function () { emit(s); }, 0); return function () { subs = subs.filter(function (x) { return x !== s; }); }; }
@@ -1938,13 +1974,12 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   renderAlarm();
   initDb();
   initMcp();
-  setTimeout(function () { if (HOST === 'local') $('todo-meta').textContent = (syncId() || ghToken()) ? 'synchronisation…' : 'enregistré sur cet appareil'; }, 0);
-  setTimeout(syncNow, /github\.io$/.test(location.hostname) ? 0 : 3500);
+  setTimeout(function () { if (HOST === 'local') $('todo-meta').textContent = 'synchronisation…'; }, 0);
+  setTimeout(syncNow, /github\.io$|^localhost$/.test(location.hostname) ? 0 : 3500);
   /* Import unique depuis un petit fichier de données (lien #k=...) */
   (function () {
     var m = (location.hash || '').match(/^#k=([A-Za-z0-9]+)/);
     /* Première ouverture (ex.: app installée sur l'écran d'accueil, mémoire vide): on charge une fois les données de départ */
-    if (!m && /github\.io$/.test(location.hostname) && lsGet('reveil_seeded') === null && lsGet(DBKEY) === null && lsGet('jarvis_events') === null && !ghToken()) { m = [null, '505b80521e7d']; lsSet('reveil_seeded', '1'); }
     if (!m) return;
     fetch((/github\.io$/.test(location.hostname) ? '' : 'https://westphal03.github.io/jarvis-ai/reveil/') + 'd-' + m[1] + '.json', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); }).then(function (p) {
       Object.keys(p).forEach(function (k) {

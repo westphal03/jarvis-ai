@@ -1,0 +1,524 @@
+{
+ "data": {
+  "jarvis_events": {
+   "2026-01-02": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-01-14": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-01-15": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-01-28": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-01-29": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-02-10": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-02-12": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-02-24": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-02-26": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-03-11": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-03-12": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-03-25": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-03-26": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-04-08": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-04-09": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-04-22": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-04-23": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-05-06": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-05-07": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-05-20": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-05-21": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-06-03": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-06-04": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-06-17": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-06-18": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-01": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-02": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-15": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-16": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-29": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-07-30": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-08-12": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-08-13": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-08-26": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-08-27": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-09-09": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-09-10": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-09-23": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-09-24": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-10-07": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-10-08": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-10-21": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    },
+    {
+     "text": "Travail",
+     "time": "07:30",
+     "type": "event"
+    }
+   ],
+   "2026-10-22": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    },
+    {
+     "text": "Travail",
+     "time": "07:30",
+     "type": "event"
+    }
+   ],
+   "2026-11-04": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-11-05": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-11-18": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-11-19": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-02": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-03": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-16": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-17": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-30": [
+    {
+     "text": "Collecte des matières recyclables",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-12-31": [
+    {
+     "text": "Collecte des déchets",
+     "time": "",
+     "type": "reminder"
+    }
+   ],
+   "2026-10-13": [
+    {
+     "text": "Travail",
+     "time": "07:30–16:00",
+     "type": "event"
+    }
+   ],
+   "2026-10-14": [
+    {
+     "text": "Travail",
+     "time": "07:30–16:00",
+     "type": "event"
+    }
+   ],
+   "2026-10-15": [
+    {
+     "text": "Travail",
+     "time": "07:30–16:00",
+     "type": "event"
+    }
+   ],
+   "2026-10-16": [
+    {
+     "text": "Travail",
+     "time": "07:30–16:00",
+     "type": "event"
+    }
+   ],
+   "2026-10-19": [
+    {
+     "text": "Travail",
+     "time": "07:30",
+     "type": "event"
+    }
+   ],
+   "2026-10-20": [
+    {
+     "text": "Travail",
+     "time": "07:30",
+     "type": "event"
+    }
+   ],
+   "2026-10-23": [
+    {
+     "text": "Travail",
+     "time": "07:30",
+     "type": "event"
+    }
+   ]
+  },
+  "jarvis_birthdays": [
+   {
+    "monthDay": "10-03",
+    "text": "ma fête"
+   },
+   {
+    "monthDay": "03-10",
+    "text": "Fête à Steph"
+   },
+   {
+    "monthDay": "08-15",
+    "text": "Fête à Kass❤️"
+   },
+   {
+    "monthDay": "10-25",
+    "text": "Fête à la Mom"
+   },
+   {
+    "monthDay": "01-19",
+    "text": "Dad's birthday"
+   },
+   {
+    "monthDay": "09-21",
+    "text": "anniversaire véro"
+   }
+  ],
+  "jarvis_recurring": [
+   {
+    "freq": "monthly",
+    "intervalDays": null,
+    "startDate": "2026-09-28",
+    "text": "Hydro Québec 150$",
+    "time": "",
+    "type": "event"
+   }
+  ],
+  "reveil_db": {
+   "todos": {
+    "j1": {
+     "text": "Ménage char",
+     "done": false,
+     "createdAt": 1791671006000,
+     "pos": 1000
+    },
+    "j2": {
+     "text": "Changement d’huile",
+     "done": false,
+     "createdAt": 1791671005000,
+     "pos": 2000
+    },
+    "j3": {
+     "text": "Affûter l’auto post de Skylar",
+     "done": false,
+     "createdAt": 1791671004000,
+     "pos": 3000
+    },
+    "j4": {
+     "text": "Add 72h countdown to add to campaign",
+     "done": false,
+     "createdAt": 1791671003000,
+     "pos": 4000
+    },
+    "j5": {
+     "text": "Renouveller permis de ppa",
+     "done": false,
+     "createdAt": 1791671002000,
+     "pos": 5000
+    },
+    "j6": {
+     "text": "payer permis",
+     "done": false,
+     "createdAt": 1791671001000,
+     "pos": 6000
+    },
+    "81zrtr4hazzfx0u2e420": {
+     "text": "Faire changement d’huile ",
+     "done": false,
+     "createdAt": 1791671773407,
+     "pos": 7000
+    }
+   }
+  }
+ },
+ "ts": {
+  "jarvis_events": 1792186263357,
+  "jarvis_birthdays": 1792186263357,
+  "jarvis_recurring": 1792186263357,
+  "reveil_db": 1792186263357
+ }
+}
