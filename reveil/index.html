@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-16-b">
+<meta name="reveil-version" content="2026-10-17-a">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -20,14 +20,14 @@
 <style>
 :root {
   color-scheme: dark;
-  --bg: #0a0d13; --panel: #121722; --panel2: #1a2130; --line: #252d3f; --line2: #323c52;
-  --ink: #e9edf5; --muted: #8b95ab; --accent: #5eead4; --accent-ink: #04251f; --accent2: #a78bfa;
+  --bg: #0d1117; --panel: #151b24; --panel2: #1c2431; --line: #232c39; --line2: #2b3647;
+  --ink: #e3e9f1; --muted: #8191a6; --accent: #4fd1c5; --accent-ink: #06201d; --accent2: #a78bfa;
   --bad: #fb7185; --good: #4ade80; --warn: #fbbf24;
-  --f-head: 'Bricolage Grotesque', system-ui, sans-serif; --f-body: 'IBM Plex Sans', system-ui, sans-serif; --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --f-head: 'IBM Plex Mono', ui-monospace, monospace; --f-body: 'IBM Plex Sans', system-ui, sans-serif; --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: radial-gradient(1200px 600px at 85% -10%, #14213a 0%, transparent 60%), radial-gradient(900px 500px at -10% 10%, #10282a 0%, transparent 55%), var(--bg); background-attachment: fixed; color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -62,7 +62,7 @@ button { cursor: pointer; touch-action: manipulation; }
   .stack { display: contents; }
   #p-notes { order: 1; } #p-alarm { order: 2; } #p-rout { order: 3; } #p-sounds { order: 4; } #p-cal { order: 5; } #p-pub { order: 6; } #p-mail { order: 7; }
 }
-.panel { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)), var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 18px 20px 20px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid transparent; border-radius: 14px; padding: 18px 20px 20px; min-width: 0; }
 .panel-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; min-height: 34px; }
 .panel-h h2 { font-family: var(--f-head); font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
 .btn { min-height: 40px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel2); }
@@ -93,7 +93,7 @@ button { cursor: pointer; touch-action: manipulation; }
 #note-hint:empty { display: none; }
 
 /* Alarme */
-.hero { background: radial-gradient(500px 220px at 90% 0%, rgba(167,139,250,.22), transparent 70%), linear-gradient(160deg, #1b2440, #121722 70%); border-color: #2c3756; }
+.hero { background: var(--panel); }
 .switch { width: 58px; height: 34px; border-radius: 20px; border: 1px solid var(--line2); background: var(--panel2); position: relative; padding: 0; flex: none; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: var(--muted); transition: transform .18s, background .18s; }
 .switch[aria-pressed="true"] { background: rgba(94,234,212,.2); border-color: var(--accent); }
@@ -311,6 +311,53 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   .vol-row, .timer { margin-top: 5px; }
 }
 
+/* ===== Cockpit ===== */
+.hm { font-weight: 500; letter-spacing: -.02em; }
+.al-time, .n-clock, #ring .big { font-weight: 500; }
+.panel-h h2 { font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.panel .panel-h h2 { font-family: var(--f-mono); }
+#p-time { display: none; }
+.tl-h { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.tl-track { position: relative; height: 40px; margin-top: 4px; }
+.tl-line { position: absolute; left: 0; right: 0; top: 18px; height: 2px; background: var(--line); }
+.tl-work { position: absolute; top: 6px; height: 26px; border-radius: 6px; background: #1f3a4a; border: 1px solid #2f5b73; color: #bfe3f2; font-family: var(--f-mono); font-size: 12px; display: flex; align-items: center; padding-left: 8px; overflow: hidden; white-space: nowrap; }
+.tl-al { position: absolute; top: 0; height: 38px; width: 2px; background: var(--accent); }
+.tl-allbl { position: absolute; top: 28px; transform: translateX(-50%); font-family: var(--f-mono); font-size: 11px; color: var(--accent); background: var(--panel); padding: 0 3px; }
+.tl-work[hidden], .tl-al[hidden], .tl-allbl[hidden] { display: none; }
+.tl-hours { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 10px; color: #56627a; margin-top: 1px; }
+.cell.today { background: rgba(79,209,197,.14); }
+.cell.work { background: #1a2f3c; border-color: #2f5b73; }
+@media (min-width: 700px) and (min-height: 560px) and (orientation: landscape) {
+  .wrap { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: 116px 120px minmax(0, 1fr) 300px; gap: 8px; padding: 8px 10px; }
+  .top, .cols, .stack, .chips { display: contents; }
+  .chip:not(#wx-chip), .clk > div:last-child { display: none; }
+  .clk { grid-column: 1 / span 4; grid-row: 1; background: var(--panel); border-radius: 14px; padding: 6px 14px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+  .clk::before { content: attr(data-date); font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+  .hm { font-size: 60px; line-height: 1; }
+  .hm small { font-size: 18px; top: .2em; }
+  #wx-chip { grid-column: 10 / span 3; grid-row: 1; max-width: none; flex: none; background: var(--panel); border: 0; border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: space-between; }
+  #wx-chip .k { font-family: var(--f-mono); letter-spacing: .1em; } #wx-chip .v { font-size: 32px; font-weight: 500; } #wx-chip .s { font-size: 12px; white-space: normal; }
+  #p-time { display: block; grid-column: 1 / span 4; grid-row: 2; padding: 6px 12px 6px; }
+  #p-alarm { grid-column: 5 / span 5; grid-row: 1 / span 2; }
+  .tools { grid-column: 10 / span 3; grid-row: 2; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; }
+  .tools .tbtn { min-height: 0; justify-content: center; border-radius: 12px; }
+  #wake { grid-row: 2; grid-column: 1; } #refresh { grid-row: 2; grid-column: 2; }
+  #night-btn { grid-row: 1; grid-column: 1 / span 2; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; font-size: 15px; }
+  #p-notes { grid-column: 1 / span 4; grid-row: 3 / span 2; }
+  #p-rout { grid-column: 5 / span 3; grid-row: 3; }
+  #p-sounds { grid-column: 5 / span 3; grid-row: 4; }
+  #p-cal { grid-column: 8 / span 5; grid-row: 3 / span 2; }
+  #night-btn2, #timer-left { display: none; }
+  .al-time { font-size: 34px; }
+  #p-alarm { padding: 6px 12px; }
+  #p-alarm .panel-h { margin-bottom: 0; min-height: 24px; }
+  #p-alarm .al-sub { margin: 0 0 2px; font-size: 12px; }
+  #p-alarm .al-row { padding: 2px 0; gap: 4px; }
+  #p-alarm .stepper button { height: 30px; } #p-alarm .stepper b { min-width: 56px; }
+  #p-alarm .btn, #p-alarm .snd-pick select { min-height: 30px; }
+  #al-audio { font-size: 10.5px !important; padding-top: 2px !important; }
+}
+
 .snd-pick { display: flex; gap: 6px; align-items: center; min-width: 0; flex: 1; justify-content: flex-end; }
 .snd-pick select { min-width: 0; flex: 1 1 120px; max-width: 220px; min-height: 40px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); padding: 0 8px; font-size: 14px; }
 .snd-pick .btn { min-width: 40px; padding: 0 8px; }
@@ -334,7 +381,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="clk">
+    <div class="clk" id="clk">
       <div class="hm"><span id="clock-hm">--:--</span><small id="clock-s">00</small></div>
       <div><div id="greet">Bonjour</div><div id="date-long">&nbsp;</div></div>
     </div>
@@ -354,6 +401,12 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
 
   <main class="cols">
     <div class="stack">
+      <section class="panel" id="p-time" aria-label="Chronologie du quart de travail">
+        <div class="tl-h"><span id="tl-title">CHRONOLOGIE</span><span id="tl-rng"></span></div>
+        <div class="tl-track" id="tl-track"><div class="tl-line"></div><div class="tl-work" id="tl-work" hidden></div><div class="tl-al" id="tl-al" hidden></div><div class="tl-allbl" id="tl-allbl" hidden></div></div>
+        <div class="tl-hours" id="tl-hours"></div>
+      </section>
+
       <section class="panel" id="p-notes" aria-labelledby="h-todo">
         <div class="panel-h"><h2 id="h-todo">Bloc-notes</h2><span class="meta" id="todo-meta">synchronisé sur tous vos appareils</span></div>
         <div class="sheet" id="notes" role="list" aria-label="Liste à faire">
@@ -1095,7 +1148,31 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     }
     $('al-sub').textContent = alarmSub;
     $('n-alarm').textContent = alarmText;
+    renderTimeline(a);
     computeNext();
+  }
+
+  /* ---------- Chronologie du quart (style Cockpit) ---------- */
+  function renderTimeline(a) {
+    var w = $('tl-work'), al = $('tl-al'), lb = $('tl-allbl'), hrs = $('tl-hours');
+    if (!a) { w.hidden = al.hidden = lb.hidden = true; $('tl-title').textContent = 'CHRONOLOGIE'; $('tl-rng').textContent = ''; hrs.innerHTML = ''; return; }
+    var st = a.shift.start, sh = st.getHours() + st.getMinutes() / 60, eh;
+    if (a.shift.end) eh = a.shift.end.getHours() + a.shift.end.getMinutes() / 60;
+    else { var mm = String(a.shift.timeLabel || '').match(/[–-]\s*(\d{1,2}):(\d{2})/); eh = mm ? +mm[1] + mm[2] / 60 : sh + 8; }
+    var ad = new Date(a.at), ah = ad.getHours() + ad.getMinutes() / 60;
+    if (ad.getDate() !== st.getDate()) ah = 0;
+    var lo = Math.max(0, Math.floor(Math.min(ah, sh) - 1)), hi = Math.min(24, Math.ceil(eh + 1));
+    if (hi - lo < 6) hi = Math.min(24, lo + 6);
+    var span = hi - lo, pc = function (h) { return Math.max(0, Math.min(100, (h - lo) / span * 100)); };
+    w.hidden = al.hidden = lb.hidden = false;
+    w.style.left = pc(sh) + '%'; w.style.width = (pc(eh) - pc(sh)) + '%';
+    w.textContent = 'TRAVAIL ' + hm(st) + ' – ' + pad(Math.floor(eh)) + ':' + pad(Math.round((eh % 1) * 60));
+    al.style.left = pc(ah) + '%'; lb.style.left = pc(ah) + '%'; lb.textContent = hm(ad);
+    al.style.opacity = lb.style.opacity = alarm.on ? '1' : '.4';
+    $('tl-title').textContent = st.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric' }).toUpperCase() + ' · CHRONOLOGIE';
+    var h = '', step = span > 10 ? 2 : 1;
+    for (var x = lo; x <= hi; x += step) h += '<span>' + pad(x) + '</span>';
+    hrs.innerHTML = h;
   }
   function saveAlarm() {
     lsSet('dash.alarm', JSON.stringify(alarm));
@@ -1715,7 +1792,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     $('clock-hm').textContent = t;
     $('clock-s').textContent = pad(d.getSeconds());
     var dl = d.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' });
-    $('date-long').textContent = dl;
+    $('date-long').textContent = dl; $('clk').setAttribute('data-date', dl);
     var h = d.getHours();
     $('greet').textContent = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
     if (!$('night').hidden) { $('n-clock').textContent = t; $('n-date').textContent = dl; }
