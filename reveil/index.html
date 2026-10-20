@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta name="reveil-version" content="2026-10-17-a">
+<meta name="reveil-version" content="2026-10-20-a">
 <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -383,7 +383,7 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
   <header class="top">
     <div class="clk" id="clk">
       <div class="hm"><span id="clock-hm">--:--</span><small id="clock-s">00</small></div>
-      <div><div id="greet">Bonjour</div><div id="date-long">&nbsp;</div></div>
+      <div><div id="greet">Bonjour</div><div id="date-long">&nbsp;</div><div class="meta" id="week-line"></div></div>
     </div>
     <div class="chips">
       <div class="chip"><div class="k">À faire</div><div class="v" id="s-todo">–</div><div class="s" id="s-todo-s">&nbsp;</div></div>
@@ -1148,17 +1148,18 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     }
     $('al-sub').textContent = alarmSub;
     $('n-alarm').textContent = alarmText;
-    renderTimeline(a);
+    renderTimeline(a); renderWeek();
     computeNext();
   }
 
   /* ---------- Chronologie du quart (style Cockpit) ---------- */
   function renderTimeline(a) {
     var w = $('tl-work'), al = $('tl-al'), lb = $('tl-allbl'), hrs = $('tl-hours');
-    if (!a) { w.hidden = al.hidden = lb.hidden = true; $('tl-title').textContent = 'CHRONOLOGIE'; $('tl-rng').textContent = ''; hrs.innerHTML = ''; return; }
+    if (!a) { w.hidden = al.hidden = lb.hidden = true; $('tl-title').textContent = 'CHRONOLOGIE'; hrs.innerHTML = ''; return; }
     var st = a.shift.start, sh = st.getHours() + st.getMinutes() / 60, eh;
     if (a.shift.end) eh = a.shift.end.getHours() + a.shift.end.getMinutes() / 60;
     else { var mm = String(a.shift.timeLabel || '').match(/[–-]\s*(\d{1,2}):(\d{2})/); eh = mm ? +mm[1] + mm[2] / 60 : sh + 8; }
+    if (eh <= sh) eh += 24;
     var ad = new Date(a.at), ah = ad.getHours() + ad.getMinutes() / 60;
     if (ad.getDate() !== st.getDate()) ah = 0;
     var lo = Math.max(0, Math.floor(Math.min(ah, sh) - 1)), hi = Math.min(24, Math.ceil(eh + 1));
@@ -1166,13 +1167,36 @@ a { color: var(--accent); text-decoration-color: rgba(94,234,212,.4); }
     var span = hi - lo, pc = function (h) { return Math.max(0, Math.min(100, (h - lo) / span * 100)); };
     w.hidden = al.hidden = lb.hidden = false;
     w.style.left = pc(sh) + '%'; w.style.width = (pc(eh) - pc(sh)) + '%';
-    w.textContent = 'TRAVAIL ' + hm(st) + ' – ' + pad(Math.floor(eh)) + ':' + pad(Math.round((eh % 1) * 60));
+    var eh24 = eh % 24; w.textContent = 'TRAVAIL ' + hm(st) + ' – ' + pad(Math.floor(eh24)) + ':' + pad(Math.round((eh24 % 1) * 60));
     al.style.left = pc(ah) + '%'; lb.style.left = pc(ah) + '%'; lb.textContent = hm(ad);
     al.style.opacity = lb.style.opacity = alarm.on ? '1' : '.4';
     $('tl-title').textContent = st.toLocaleDateString(LOC, { weekday: 'long', day: 'numeric' }).toUpperCase() + ' · CHRONOLOGIE';
     var h = '', step = span > 10 ? 2 : 1;
     for (var x = lo; x <= hi; x += step) h += '<span>' + pad(x) + '</span>';
     hrs.innerHTML = h;
+  }
+
+  /* ---------- Compteur d'heures: une semaine à la fois (lundi → dimanche) ---------- */
+  function hLabel(ms) { var m = Math.round(ms / 60000), h = Math.floor(m / 60); return h + ' h' + (m % 60 ? ' ' + pad(m % 60) : ''); }
+  function renderWeek() {
+    var now = new Date(), dow = (now.getDay() + 6) % 7;
+    var m0 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow), m1 = new Date(m0.getFullYear(), m0.getMonth(), m0.getDate() + 7);
+    var list = agendaEvents.concat(customEventsInRange({ start: m0, end: m1 })), seen = {}, tot = 0, done = 0, n = 0;
+    list.forEach(function (e) {
+      if (!isShift(e) || e.start < m0 || e.start >= m1) return;
+      var k = Math.floor(e.start.getTime() / 60000); if (seen[k]) return; seen[k] = true;
+      var end = e.end;
+      if (!end) {
+        var mm = String(e.timeLabel || '').match(/[–-]\s*(\d{1,2}):(\d{2})/);
+        if (!mm) return;
+        end = new Date(e.start.getFullYear(), e.start.getMonth(), e.start.getDate(), +mm[1], +mm[2]);
+        if (end <= e.start) end.setDate(end.getDate() + 1);
+      }
+      n++; tot += end - e.start; done += Math.max(0, Math.min(now.getTime(), end.getTime()) - e.start.getTime());
+    });
+    var txt = n ? 'SEMAINE · ' + hLabel(done) + ' / ' + hLabel(tot) : 'SEMAINE · aucun quart';
+    var a = $('tl-rng'); if (a) a.textContent = txt;
+    var b = $('week-line'); if (b) b.textContent = n ? 'Cette semaine : ' + hLabel(done) + ' faites sur ' + hLabel(tot) : '';
   }
   function saveAlarm() {
     lsSet('dash.alarm', JSON.stringify(alarm));

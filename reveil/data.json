@@ -291,7 +291,7 @@
    "2026-10-21": [
     {
      "text": "Travail",
-     "time": "07:30–15:30",
+     "time": "07:30–19:30",
      "type": "event"
     },
     {
@@ -420,14 +420,28 @@
    "2026-10-20": [
     {
      "text": "Travail",
-     "time": "07:30–15:30",
+     "time": "07:30–19:30",
      "type": "event"
     }
    ],
    "2026-10-23": [
     {
      "text": "Travail",
-     "time": "07:30–15:30",
+     "time": "19:30–07:30",
+     "type": "event"
+    }
+   ],
+   "2026-10-24": [
+    {
+     "text": "Travail",
+     "time": "19:30–07:30",
+     "type": "event"
+    }
+   ],
+   "2026-10-25": [
+    {
+     "text": "Travail",
+     "time": "19:30–07:30",
      "type": "event"
     }
    ]
@@ -516,7 +530,7 @@
   }
  },
  "ts": {
-  "jarvis_events": 1792186322936,
+  "jarvis_events": 1792519142763,
   "jarvis_birthdays": 1792186263357,
   "jarvis_recurring": 1792186263357,
   "reveil_db": 1792186263357
